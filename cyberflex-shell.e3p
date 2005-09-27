@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Project SYSTEM "Project-3.5.dtd">
+<!-- Project file for project cyberflex-shell -->
+<!-- Saved: 2005-09-27, 15:23:49 -->
+<!-- Copyright (C) 2005 Henryk Plötz, henryk@ploetzli.ch -->
+<Project version="3.5">
+  <Description></Description>
+  <Version>0.1</Version>
+  <Author>Henryk Plötz</Author>
+  <Email>henryk@ploetzli.ch</Email>
+  <Sources>
+  </Sources>
+  <Forms>
+  </Forms>
+  <Translations>
+  </Translations>
+  <Interfaces>
+  </Interfaces>
+  <Others>
+  </Others>
+  <Vcs>
+    <VcsType>CVS</VcsType>
+    <VcsOptions>{'status': [u'-v'], 'log': [], 'global': [u'-f'], 'update': [u'-dP'], 'remove': [u'-f'], 'add': [], 'tag': [u'-c'], 'export': [], 'diff': [u'-u3', u'-p'], 'commit': [], 'checkout': [], 'history': [u'-e', u'-a']}</VcsOptions>
+    <VcsOtherData>{}</VcsOtherData>
+  </Vcs>
+</Project>

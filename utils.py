@@ -1,5 +1,6 @@
 import pycsc, string, binascii, sys
 
+_myprintable = " " + string.letters + string.digits + string.punctuation
 def hexdump(data, indent = 0, short = False):
     r"""Generates a nice hexdump of data and returns it. Consecutive lines will 
     be indented with indent spaces. When short is true, will instead generate 
@@ -14,7 +15,7 @@ def hexdump(data, indent = 0, short = False):
         return " ".join([binascii.b2a_hex(a) for a in data])
     
     def printable(data):
-        return "".join([e in string.printable and e or "." for e in data])
+        return "".join([e in _myprintable and e or "." for e in data])
     
     if short:
         return "%s (%s)" % (hexable(data), printable(data))

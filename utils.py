@@ -25,7 +25,7 @@ def hexdump(data, indent = 0, short = False):
     pos = 0
     while len(head) > 0:
         if pos > 0:
-            result = result + "\n%s" % ' ' * indent
+            result = result + "\n%s" % (' ' * indent)
         result = result + "%04x:  %-48s  %-16s" % (pos, hexable(head), printable(head))
         pos = pos + len(head)
         (head, tail) = (tail[:16], tail[16:])

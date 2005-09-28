@@ -9,6 +9,9 @@
   <Author>Henryk Plötz</Author>
   <Email>henryk@ploetzli.ch</Email>
   <Sources>
+    <Source>
+      <Name>utils.py</Name>
+    </Source>
   </Sources>
   <Forms>
   </Forms>

@@ -1,8 +1,8 @@
 import pycsc, string, binascii, sys
 
-def hexdump(data, offset = 0, short = False):
+def hexdump(data, indent = 0, short = False):
     r"""Generates a nice hexdump of data and returns it. Consecutive lines will 
-    be indented with offset spaces. When short is true, will instead generate 
+    be indented with indent spaces. When short is true, will instead generate 
     hexdump without adresses and on one line.
     
     Examples: 
@@ -24,7 +24,7 @@ def hexdump(data, offset = 0, short = False):
     pos = 0
     while len(head) > 0:
         if pos > 0:
-            result = result + "\n%s" % ' ' * offset
+            result = result + "\n%s" % ' ' * indent
         result = result + "%04x:  %-48s  %-16s" % (pos, hexable(head), printable(head))
         pos = pos + len(head)
         (head, tail) = (tail[:16], tail[16:])
@@ -69,7 +69,7 @@ def parse_status(data):
         privileges = ord(segment[1+lgth+1])
         
         print "aid length:       %i (%x)" % (lgth, lgth)
-        print "aid:              %s" % hexdump(aid, offset = 18, short=True)
+        print "aid:              %s" % hexdump(aid, indent = 18, short=True)
         print "life cycle state: %x (%s)" % (lifecycle, LIFE_CYCLES.get(lifecycle, "unknown or invalid state"))
         print "privileges:       %x (%s)\n" % (privileges, parse_privileges(privileges))
 

@@ -117,6 +117,8 @@ if __name__ == "__main__":
         if line == "":
             continue
         
+        card.sw_changed = False
+        
         parts = line.split()
         cmd = parts[0]
         if card.COMMANDS.has_key(cmd.lower()):
@@ -151,3 +153,6 @@ if __name__ == "__main__":
             
         else:
             print "Unknown command"
+        
+        if card.sw_changed:
+            print card.decode_statusword()

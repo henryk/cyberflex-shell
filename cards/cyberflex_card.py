@@ -270,6 +270,49 @@ class Cyberflex_Card(Java_Card):
         "reset_keyset": (cmd_resetkeyset, "reset_keyset",
             """Reset the keyset to the default keyset for this card.""")
         } )
+    STATUS_WORDS = dict(Java_Card.STATUS_WORDS)
+    STATUS_WORDS.update( {
+        "\x62\x83": "The Card Manager is locked (SelectApplication).",
+        "\x63\x00": "Authentication of the host cryptogram failed.",
+        "\x63\x10": "More data is available for return than is specified in the Le value.",
+        "\x64\x00": "Technical problem that has no specified diagnosis.",
+        "\x65\x81": "Memory failure.",
+        "\x67\x00": "The specified length of the input data (Lc) is incorrect.",
+        "\x69\x81": "No key is specified (GetResponse, called internally).",
+        "\x69\x82": "Security status not satisfied. For example, MAC verification failed, the authentication key is locked, or the current security domain requires DAP verification and no verification data was included with the command.",
+        "\x69\x83": "The key is blocked (GetResponse, called internally).",
+        "\x69\x85": """A requirement for using the command is not satisfied. For example:
++ Command issued outside of a secure channel.
++ Current application does not have the required application privilege
+  or life cycle state.
++ The required preceding command was not present.
++ The object to delete is referenced by another object on the card.""",
+        "\x69\x87": "The MAC or other verification data is missing (Install).",
+        "\x69\x99": "Application selection failed (SelectApplication).",
+        "\x6A\x80": """Invalid or inconsistent input data, including input data that is inconsistent with a command header parameter, and LV/TLV-format elements in the input data that are not self-consistent. For example:
++ Incorrect number of padding bytes, incorrect key used for
+  encryption, or the specified key set or key index value is invalid.
++ Referenced AID is not found in the card registry or package, or the
+  newly specified AID already exists in the registry.
++ Inappropriate application privilege byte value (installing security
+  domain), or card already has a default selected application
+  (specifying default selected application).
++ First block of input data for a load file is not preceded by the
+  correct tag and/or valid length, or the load file refers to a
+  nonexistent package.""",
+        "\x6A\x81": "Target is locked (SelectApplication).",
+        "\x6A\x82": "Registry contains no valid application (or no additional valid application) with the specified AID (SelectApplication).",
+        "\x6A\x84": "Insufficient EEPROM memory available to add the object to the card.",
+        "\x6A\x86": "Incorrect or unsupported value is specified for P1, P2, or both.",
+        "\x6A\x88": "Data referred to in P1, P2, or both is not found.",
+        "\x6D\x00": "Unsupported value entered for the INS byte.",
+        "\x6E\x00": "Unsupported value entered for the CLA byte.",
+        "\x6F\x00": "JVM error that has no specified diagnosis.",
+        "\x90\x00": "Command succeeded.",
+        "\x94\x81": "Target has an invalid life cycle state.",
+        "\x94\x84": "Unsupported algorithm ID in input data (PutKey).",
+        "\x94\x85": "Invalid key check value in input data (PutKey).",
+        } )
 
 if __name__ == "__main__":
     c = Cyberflex_Card()

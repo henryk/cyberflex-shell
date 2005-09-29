@@ -49,7 +49,8 @@ while line != "exit":
         print
         break
     
-    if line.strip() == "":
+    line = line.strip()
+    if line == "":
         continue
     
     parts = line.split()
@@ -71,3 +72,6 @@ while line != "exit":
         except Exception:
             exctype, value = sys.exc_info()[:2]
             print "%s: %s" % (exctype, value)
+        
+    else:
+        print "Unknown command"

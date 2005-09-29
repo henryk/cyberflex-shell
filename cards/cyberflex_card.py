@@ -149,8 +149,8 @@ class Cyberflex_Card(Java_Card):
         self.secure_channel_state = security_level
         
         if result[-2:] != self.SW_OK:
-            raise Exception, "Statusword after ExternalAuthenticate was %s. Warning: No successful ExternalAuthenticate; keyset might be locked soon" % binascii.b2a_hex(result[-2:])
             self.secure_channel_state = SECURE_CHANNEL_NONE
+            raise Exception, "Statusword after ExternalAuthenticate was %s. Warning: No successful ExternalAuthenticate; keyset might be locked soon" % binascii.b2a_hex(result[-2:])
         
         return True
     
@@ -182,7 +182,34 @@ class Cyberflex_Card(Java_Card):
         utils.parse_status(result[:-2])
     
     def cmd_secure(self, *args):
-        self.open_secure_channel()
+        if len(args) == 0:
+            arg1 = 0
+            arg2 = 0
+            arg3int = SECURE_CHANNEL_MAC
+        elif len(args)== 3:
+            arg1 = int(args[0],0)
+            arg2 = int(args[1],0)
+            
+            if arg1 not in range(256):
+                raise ValueError, "keyset_version must be between 0 and 255 (inclusive)."
+            if arg2 not in (0,1):
+                raise ValueError, "key_index must be 0 or 1."
+            
+            arg3 = args[2].strip().lower()
+            try:
+                arg3int = int(args[2],0)
+            except:
+                arg3int = None
+            
+            if arg3 == "clear":
+               arg3int = SECURE_CHANNEL_CLEAR 
+            elif arg3 == "mac":
+                arg3int = SECURE_CHANNEL_MAC
+            elif arg3 in ("macenc", "mac+enc"):
+                arg3int = SECURE_CHANNEL_MACENC
+        else:
+            raise TypeError, "Must give none or three arguments."
+        self.open_secure_channel(arg1, arg2, arg3int)
     
     def cmd_setkey(self, *args):
         if len(args) != 2: 
@@ -192,7 +219,6 @@ class Cyberflex_Card(Java_Card):
             arg1int = int(arg1,0)
         except:
             arg1int = None
-            pass
         
         if len(args[1]) != 16:
             arg2 = binascii.a2b_hex("".join(args[1].split()))
@@ -235,8 +261,8 @@ class Cyberflex_Card(Java_Card):
     COMMANDS.update( {
         "status": (cmd_status, "status [reference_control]", 
             """Execute a GetStatus command and return the result."""),
-        "open_secure_channel": (cmd_secure, "open_secure_channel",
-            """Open a secure channel with the default parameters (FIXME)."""),
+        "open_secure_channel": (cmd_secure, "open_secure_channel [keyset_version key_index security_level]",
+            """Open a secure channel. If given, keyset_version and key_index must be integers while security_level can be one of 0, clear, 1, mac, 3, macenc, mac+enc."""),
         "set_key": (cmd_setkey, "set_key key_index key",
             """Set a key in the current keyset. key_index should be one of 0, all, 1, enc, auth, 2, mac, 3, kek."""),
         "print_keyset": (cmd_printkeyset, "print_keyset",

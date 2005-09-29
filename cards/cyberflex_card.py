@@ -19,6 +19,7 @@ class Cyberflex_Card(Java_Card):
     APDU_INITIALIZE_UPDATE = '\x80\x50\x00\x00\x08'
     APDU_EXTERNAL_AUTHENTICATE = '\x84\x82\x00\x00'
     APDU_GET_STATUS = '\x84\xF2\x00\x00\x02\x4f\x00'
+    APDU_DELETE = '\x84\xe4\x00\x00'
     DRIVER_NAME = "Cyberflex"
     
     ATRS = [ 
@@ -176,6 +177,22 @@ class Cyberflex_Card(Java_Card):
         return self.send_apdu(self.APDU_GET_STATUS[:2] + chr(reference_control)
             + self.APDU_GET_STATUS[3:])
     
+    def delete(self, aid):
+        if aid[:5] == DEFAULT_CARD_MANAGER_AID[:5]:
+            print "Cowardly refusing to delete the card manager."
+            raise ValueError, "Undeletable object"
+        tlvaid = chr(0x4f) + chr(len(aid)) + aid
+        apdu = self.APDU_DELETE + chr(len(tlvaid)) + tlvaid
+        result = self.send_apdu(apdu)
+        
+        return result[0] == 0x0
+    
+    def cmd_delete(self, *args):
+        if len(args) != 1:
+            raise TypeError, "Must have exactly one argument."
+        aid = binascii.a2b_hex("".join(args[0].split()))
+        self.delete(aid)
+    
     def cmd_status(self, *args):
         if len(args) > 1:
             raise TypeError, "Can have at most one argument."
@@ -306,7 +323,9 @@ class Cyberflex_Card(Java_Card):
         "save_keyset": (cmd_savekeyset, "save_keyset filename",
             """Saves the keyset to the named file."""),
         "load_keyset": (cmd_loadkeyset, "load_keyset filename",
-            """Loads the keyset from the named file.""")
+            """Loads the keyset from the named file."""),
+        "delete": (cmd_delete, "delete aid",
+            """Delete the object identified by aid.""")
         } )
     STATUS_WORDS = dict(Java_Card.STATUS_WORDS)
     STATUS_WORDS.update( {

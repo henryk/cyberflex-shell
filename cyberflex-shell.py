@@ -51,10 +51,24 @@ class Cyberflex_Shell_Completer:
 
 def cmd_exit(card, *args):
     sys.exit()
+def cmd_help(card, *args):
+    print "Cyberflex-shell help"
+    print "\n%s Card commands:" % card.DRIVER_NAME
+    for (cmd, cmdspec) in card.COMMANDS.items():
+        print "%s\n\t\t%s" % (cmdspec[1], cmdspec[2])
+    print "\nShell commands:"
+    for (cmd, cmdspec) in COMMANDS.items():
+        print "%s\n\t\t%s" % (cmdspec[1], cmdspec[2])
+def cmd_atr(card, *args):
+    print "ATR: %s" % utils.hexdump(card.card.status()['ATR'], short=True)
 
 COMMANDS = {
     "exit": (cmd_exit, "exit", 
-        """Exit the shell.""")
+        """Exit the shell."""),
+    "help": (cmd_help, "help",
+        """Print this help."""),
+    "atr": (cmd_atr, "atr",
+        """Print the ATR of the currently inserted card.""")
 }
 
 if __name__ == "__main__":

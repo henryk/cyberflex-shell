@@ -154,6 +154,12 @@ class Cyberflex_Card(Java_Card):
         
         return True
     
+    def select_application(self, aid):
+        result = Java_Card.select_application(self, aid)
+        if self.last_sw == self.SW_OK and aid[:5] != DEFAULT_CARD_MANAGER_AID[:5]:
+            self.secure_channel_state = SECURE_CHANNEL_NONE
+        return result
+    
     def get_status(self, reference_control=0x20):
         """Sends a GetStatus APDU und returns the result.
         reference_control is either:

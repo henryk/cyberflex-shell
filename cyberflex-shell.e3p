@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.5.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2005-09-27, 15:23:49 -->
+<!-- Saved: 2005-09-29, 05:37:58 -->
 <!-- Copyright (C) 2005 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.5">
   <Description></Description>
@@ -11,6 +11,28 @@
   <Sources>
     <Source>
       <Name>utils.py</Name>
+    </Source>
+    <Source>
+      <Name>crypto_utils.py</Name>
+    </Source>
+    <Source>
+      <Name>cyberflex-shell.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>cyberflex_card.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>generic_card.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>java_card.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>__init__.py</Name>
     </Source>
   </Sources>
   <Forms>

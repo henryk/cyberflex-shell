@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import pycsc, utils, cards, os, re, binascii, sys, exceptions
+import pycsc, utils, cards, os, re, binascii, sys, exceptions, traceback
+print_backtrace = False
 
 try:
     import readline
@@ -130,6 +131,8 @@ if __name__ == "__main__":
                 if exctype == exceptions.SystemExit:
                     raise exctype, value
                 print "%s: %s" % (exctype, value)
+                if print_backtrace:
+                    traceback.print_tb(sys.exc_info()[2])
             
         elif COMMANDS.has_key(cmd.lower()):
             cmdspec = COMMANDS[cmd.lower()]
@@ -140,6 +143,8 @@ if __name__ == "__main__":
                 if exctype == exceptions.SystemExit:
                     raise exctype, value
                 print "%s: %s" % (exctype, value)
+                if print_backtrace:
+                    traceback.print_tb(sys.exc_info()[2])
             
         elif apduregex.match(line):
             ## Might be an APDU
@@ -150,6 +155,8 @@ if __name__ == "__main__":
             except Exception:
                 exctype, value = sys.exc_info()[:2]
                 print "%s: %s" % (exctype, value)
+                if print_backtrace:
+                    traceback.print_tb(sys.exc_info()[2])
             
         else:
             print "Unknown command"

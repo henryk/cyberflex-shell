@@ -5,10 +5,10 @@ DEBUG = True
 
 class Card:
     APDU_GET_RESPONSE = "\x00\xC0\x00\x00"
+    APDU_VERIFY_PIN = "\x00\x20\x00\x00"
     SW_OK = '\x90\x00'
     ATRS = []
     DRIVER_NAME = "Generic"
-    COMMANDS = {}
     STATUS_WORDS = {
         SW_OK: "Normal execution"
     }
@@ -24,6 +24,24 @@ class Card:
         self.last_sw = None
         self.sw_changed = False
     
+    def verify_pin(self, pin_number, pin_value):
+        apdu = self.APDU_VERIFY_PIN[:3] + chr(pin_number) + \
+            chr(len(pin_value)) + pin_value
+        result = self.send_apdu(apdu)
+        return result == self.SW_OK
+    
+    def cmd_verify(self, *args):
+        if len(args) != 2:
+            raise TypeError, "Must give exactly two arguments: pin number and pin"
+        pin_number = int(args[0], 0)
+        pin_value = binascii.a2b_hex("".join(args[1].split()))
+        self.verify_pin(pin_number, pin_value)
+    
+    COMMANDS = {
+        "verify": (cmd_verify, "verify pin_number pin_value",
+            """Verify a PIN.""")
+    }
+
     def _check_apdu(apdu):
         if len(apdu) < 4 or ((len(apdu) > 5) and len(apdu) != (ord(apdu[4])+5)):
             print "Cowardly refusing to send invalid APDU:\n  ", utils.hexdump(apdu, indent=2)

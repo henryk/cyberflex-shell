@@ -7,7 +7,7 @@ class Card:
     SW_OK = '\x90\x00'
     ATRS = []
     DRIVER_NAME = "Generic"
-    COMMANDS = []
+    COMMANDS = {}
 
     def __init__(self, card = None):
         if card is None:

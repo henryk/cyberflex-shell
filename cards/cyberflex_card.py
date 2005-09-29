@@ -184,6 +184,44 @@ class Cyberflex_Card(Java_Card):
     def cmd_secure(self, *args):
         self.open_secure_channel()
     
+    def cmd_setkey(self, *args):
+        if len(args) != 2: 
+            raise TypeError, "Need exactly two arguments: keyset index and key"
+        arg1 = args[0].strip().lower()
+        try:
+            arg1int = int(arg1,0)
+        except:
+            arg1int = None
+            pass
+        
+        if len(args[1]) != 16:
+            arg2 = binascii.a2b_hex("".join(args[1].split()))
+        else:
+            arg2 = args[1]
+        
+        if len(arg2) != 16:
+            raise TypeError, "Need either exactly 16 binary bytes or 16 hexadezimal bytes for the key argument."
+        
+        if arg1int == 0 or arg1 == "all":
+            all = True
+        else:
+            all = False
+        
+        if all or arg1int == KEY_AUTH or arg1 in("auth","enc"):
+            self.keyset[KEY_AUTH] = arg2
+        if all or arg1int == KEY_MAC or arg1 == "mac":
+            self.keyset[KEY_MAC] = arg2
+        if all or arg1int == KEY_KEK or arg1 == "kek":
+            self.keyset[KEY_KEK] = arg2
+    
+    def cmd_printkeyset(self, *args):
+        print "ENC,AUTH:", utils.hexdump(self.keyset[KEY_AUTH], short=True)
+        print "MAC:     ", utils.hexdump(self.keyset[KEY_MAC], short=True)
+        print "KEK:     ", utils.hexdump(self.keyset[KEY_KEK], short=True)
+    
+    def cmd_resetkeyset(self, *args):
+        self.keyset = dict(DEFAULT_KEYSET)
+    
     _secname = {SECURE_CHANNEL_NONE: "",
         SECURE_CHANNEL_CLEAR: " [clear]",
         SECURE_CHANNEL_MAC: " [MAC]",
@@ -198,7 +236,13 @@ class Cyberflex_Card(Java_Card):
         "status": (cmd_status, "status [reference_control]", 
             """Execute a GetStatus command and return the result."""),
         "open_secure_channel": (cmd_secure, "open_secure_channel",
-            """Open a secure channel with the default parameters (FIXME).""")
+            """Open a secure channel with the default parameters (FIXME)."""),
+        "set_key": (cmd_setkey, "set_key key_index key",
+            """Set a key in the current keyset. key_index should be one of 0, all, 1, enc, auth, 2, mac, 3, kek."""),
+        "print_keyset": (cmd_printkeyset, "print_keyset",
+            """Print the current keyset."""),
+        "reset_keyset": (cmd_resetkeyset, "reset_keyset",
+            """Reset the keyset to the default keyset for this card.""")
         } )
 
 if __name__ == "__main__":

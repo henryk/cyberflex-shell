@@ -174,7 +174,6 @@ class Cyberflex_Card(Java_Card):
         if len(args) > 1:
             raise TypeError, "Can have at most one argument."
         if len(args) == 1:
-            print args
             reference_control = int(args[0], 0)
         else:
             reference_control = 0x20
@@ -248,6 +247,30 @@ class Cyberflex_Card(Java_Card):
     def cmd_resetkeyset(self, *args):
         self.keyset = dict(DEFAULT_KEYSET)
     
+    def cmd_savekeyset(self, *args):
+        if len(args) != 1:
+            raise TypeError, "Must give exactly one argument: the name of the file to save the keyset in."
+        fd = file(args[0], "w")
+        fd.write(self.keyset[KEY_AUTH])
+        fd.write(self.keyset[KEY_MAC])
+        fd.write(self.keyset[KEY_KEK])
+        fd.close()
+    
+    def cmd_loadkeyset(self, *args):
+        if len(args) != 1:
+            raise TypeError, "Must give exactly one argument: the name of the file to load the keyset from."
+        fd = file(args[0], "r")
+        keys = fd.read(16*3)
+        if len(keys) != 16*3:
+            del keys
+            fd.close()
+            raise ValueError, "The file must must contain three keys of 16 bytes each."
+        self.keyset[KEY_AUTH] = keys[:16]
+        self.keyset[KEY_MAC] = keys[16:16*2]
+        self.keyset[KEY_KEK] = keys[16*2:16*3]
+        del keys
+        fd.close()
+    
     _secname = {SECURE_CHANNEL_NONE: "",
         SECURE_CHANNEL_CLEAR: " [clear]",
         SECURE_CHANNEL_MAC: " [MAC]",
@@ -257,6 +280,11 @@ class Cyberflex_Card(Java_Card):
             Cyberflex_Card._secname[self.secure_channel_state])
     
     
+    APPLICATIONS = dict(Java_Card.APPLICATIONS)
+    APPLICATIONS.update( {
+        "card_manager": DEFAULT_CARD_MANAGER_AID
+        } )
+
     COMMANDS = dict(Java_Card.COMMANDS)
     COMMANDS.update( {
         "status": (cmd_status, "status [reference_control]", 
@@ -268,7 +296,11 @@ class Cyberflex_Card(Java_Card):
         "print_keyset": (cmd_printkeyset, "print_keyset",
             """Print the current keyset."""),
         "reset_keyset": (cmd_resetkeyset, "reset_keyset",
-            """Reset the keyset to the default keyset for this card.""")
+            """Reset the keyset to the default keyset for this card."""),
+        "save_keyset": (cmd_savekeyset, "save_keyset filename",
+            """Saves the keyset to the named file."""),
+        "load_keyset": (cmd_loadkeyset, "load_keyset filename",
+            """Loads the keyset from the named file.""")
         } )
     STATUS_WORDS = dict(Java_Card.STATUS_WORDS)
     STATUS_WORDS.update( {

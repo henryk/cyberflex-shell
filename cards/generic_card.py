@@ -1,6 +1,7 @@
 import crypto_utils, utils, pycsc, binascii
 
 DEBUG = True
+#DEBUG = False
 
 class Card:
     APDU_GET_RESPONSE = "\x00\xC0\x00\x00"

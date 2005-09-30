@@ -95,6 +95,8 @@ class APDU(list):
     OFFSET_LC = 4
     OFFSET_LE = 4
     OFFSET_CONTENT = 5
+    
+    LC_AUTO = None
 
     """Class for an APDU that mostly behaves like a list."""
     def __init__(self, *args, **kwargs):
@@ -124,7 +126,7 @@ class APDU(list):
         if len(self) < 4:
             self.extend([0] * (4-len(self)))
         if len(self) < self.OFFSET_LC+1:
-            self[self.OFFSET_LC:self.OFFSET_LC+1] = [None]
+            self[self.OFFSET_LC:self.OFFSET_LC+1] = [self.LC_AUTO]
         
         le = None
         for (kw, arg) in kwargs.items():
@@ -153,7 +155,7 @@ class APDU(list):
             else:
                 self[self.OFFSET_LE:self.OFFSET_LE+1] = (le,)
         
-        if self[self.OFFSET_LC] == None:
+        if self[self.OFFSET_LC] == self.LC_AUTO:
             if len(self) > self.OFFSET_CONTENT:
                 self[self.OFFSET_LC] = len(self)-self.OFFSET_CONTENT
             else:

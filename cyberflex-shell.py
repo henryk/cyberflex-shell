@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-1 -*-
 
 import pycsc, utils, cards, os, re, binascii, sys, exceptions, traceback
-print_backtrace = False
+print_backtrace = True
 
 try:
     import readline

@@ -16,10 +16,10 @@ SECURE_CHANNEL_MACENC = 3
 MAC_LENGTH = 8
 
 class Cyberflex_Card(Java_Card):
-    APDU_INITIALIZE_UPDATE = '\x80\x50\x00\x00\x08'
-    APDU_EXTERNAL_AUTHENTICATE = '\x84\x82\x00\x00'
-    APDU_GET_STATUS = '\x84\xF2\x00\x00\x02\x4f\x00'
-    APDU_DELETE = '\x84\xe4\x00\x00'
+    APDU_INITIALIZE_UPDATE = APDU('\x80\x50\x00\x00\x08')
+    APDU_EXTERNAL_AUTHENTICATE = APDU('\x84\x82\x00\x00')
+    APDU_GET_STATUS = APDU('\x84\xF2\x00\x00\x02\x4f\x00')
+    APDU_DELETE = APDU('\x84\xe4\x00\x00')
     DRIVER_NAME = "Cyberflex"
     
     ATRS = [ 
@@ -109,13 +109,11 @@ class Cyberflex_Card(Java_Card):
         if security_level not in (SECURE_CHANNEL_CLEAR, SECURE_CHANNEL_MAC, SECURE_CHANNEL_MACENC):
             raise ValueError, "security_level must be one of SECURE_CHANNEL_CLEAR, SECURE_CHANNEL_MAC or SECURE_CHANNEL_MACENC"
         
-        apdu = self.APDU_INITIALIZE_UPDATE[:2] + \
-            chr(keyset_version) + \
-            chr(key_index)
-        
         host_challenge = crypto_utils.generate_host_challenge()
-        apdu = apdu + chr(len(host_challenge)) + \
-            host_challenge
+        
+        apdu = APDU(self.APDU_INITIALIZE_UPDATE,
+            p1 = keyset_version, p2 = key_index, lc = APDU.LC_AUTO,
+            content = host_challenge)
         
         self.secure_channel_state = SECURE_CHANNEL_NONE
         self.last_mac = '\x00' * 8
@@ -141,9 +139,9 @@ class Cyberflex_Card(Java_Card):
         host_cryptogram = crypto_utils.calculate_host_cryptogram(
             self.session_key_enc, card_challenge, host_challenge)
         
-        apdu = self.APDU_EXTERNAL_AUTHENTICATE[:2] + \
-            chr(security_level) + '\x00' + chr(len(host_cryptogram)) + \
-            host_cryptogram
+        apdu = APDU(self.APDU_EXTERNAL_AUTHENTICATE,
+            p1 = security_level, p2 = 0, lc = APDU.LC_AUTO,
+            content = host_cryptogram)
             
         self.secure_channel_state = SECURE_CHANNEL_MAC
         result = self.send_apdu(apdu)
@@ -174,15 +172,18 @@ class Cyberflex_Card(Java_Card):
         
         Returns: the response APDU which can be parsed with 
         utils.parse_status()"""
-        return self.send_apdu(self.APDU_GET_STATUS[:2] + chr(reference_control)
-            + self.APDU_GET_STATUS[3:])
+        return self.send_apdu(
+            APDU(self.APDU_GET_STATUS,
+                p1 = reference_control)
+            )
     
     def delete(self, aid):
         if aid[:5] == DEFAULT_CARD_MANAGER_AID[:5]:
             print "Cowardly refusing to delete the card manager."
             raise ValueError, "Undeletable object"
         tlvaid = chr(0x4f) + chr(len(aid)) + aid
-        apdu = self.APDU_DELETE + chr(len(tlvaid)) + tlvaid
+        apdu = APDU(self.APDU_DELETE, lc = APDU.LC_AUTO,
+            content = tlvaid)
         result = self.send_apdu(apdu)
         
         return result[0] == 0x0

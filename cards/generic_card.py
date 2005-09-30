@@ -1,11 +1,12 @@
 import crypto_utils, utils, pycsc, binascii
+from utils import APDU
 
 DEBUG = True
 #DEBUG = False
 
 class Card:
-    APDU_GET_RESPONSE = "\x00\xC0\x00\x00"
-    APDU_VERIFY_PIN = "\x00\x20\x00\x00"
+    APDU_GET_RESPONSE = APDU("\x00\xC0\x00\x00")
+    APDU_VERIFY_PIN = APDU("\x00\x20\x00\x00")
     SW_OK = '\x90\x00'
     ATRS = []
     DRIVER_NAME = "Generic"
@@ -25,8 +26,8 @@ class Card:
         self.sw_changed = False
     
     def verify_pin(self, pin_number, pin_value):
-        apdu = self.APDU_VERIFY_PIN[:3] + chr(pin_number) + \
-            chr(len(pin_value)) + pin_value
+        apdu = APDU(self.APDU_VERIFY_PIN, P2 = pin_number,
+            lc = APDU.LC_AUTO, content = pin_value)
         result = self.send_apdu(apdu)
         return result == self.SW_OK
     
@@ -63,6 +64,7 @@ class Card:
         return result
     
     def send_apdu(self, apdu):
+        apdu = apdu.get_string() ## FIXME
         if not Card._check_apdu(apdu):
             raise Exception, "Invalid APDU"
         if DEBUG:
@@ -75,7 +77,7 @@ class Card:
         
         if result[0] == '\x61':
             ## Need to call GetResponse
-            gr_apdu = self.APDU_GET_RESPONSE + result[1]
+            gr_apdu = APDU(self.APDU_GET_RESPONSE, le = result[1]).get_string()
             result = self._real_send(gr_apdu)
         
         if DEBUG:

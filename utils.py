@@ -85,6 +85,110 @@ def _unformat_hexdump(dump):
     hexdump = " ".join([line[7:54] for line in dump.splitlines()])
     return binascii.a2b_hex("".join([e != " " and e or "" for e in hexdump]))
 
+
+class APDU(list):
+    OFFSET_CLA = 0
+    OFFSET_INS = 1
+    OFFSET_P1 = 2
+    OFFSET_P2 = 3
+    OFFSET_P3 = 4
+    OFFSET_LC = 4
+    OFFSET_LE = 4
+    OFFSET_CONTENT = 5
+
+    """Class for an APDU that mostly behaves like a list."""
+    def __init__(self, *args, **kwargs):
+        """Creates a new APDU instance. Can be given positional parameters which 
+        must be sequences of either strings (or strings themselves) or integers
+        specifying byte values that will be concatenated in order. Alternatively
+        you may give exactly one positional argument that is an APDU instance.
+        The keyword arguments can then be used to override those values.
+        Keywords recognized are: cla, ins, p1, p2, p3, lc, le, content.
+        Note: only set the le parameter if you don't send data."""
+        
+        if len(args) == 1 and type(args[0]) == APDU:
+            self.extend(args)
+        else:
+            for arg in args:
+                if type(arg) == str:
+                    self.extend(arg)
+                elif hasattr(arg, "__iter__"):
+                    for elem in arg:
+                        if hasattr(elem, "__iter__"):
+                            self.extend(elem)
+                        else:
+                            self.append(elem)
+                else:
+                    self.append(arg)
+        
+        if len(self) < 4:
+            self.extend([0] * (4-len(self)))
+        
+        print self
+        le = None
+        for (kw, arg) in kwargs.items():
+            if kw == "cla":
+                self[self.OFFSET_CLA] = arg
+            elif kw == "ins":
+                self[self.OFFSET_INS] = arg
+            elif kw == "p1":
+                self[self.OFFSET_P1] = arg
+            elif kw == "p2":
+                self[self.OFFSET_P2] = arg
+            elif kw == "p3":
+                self[self.OFFSET_P3:self.OFFSET_P3+1] = (arg,)
+            elif kw == "lc":
+                self[self.OFFSET_LC:self.OFFSET_LC+1] = (arg,)
+            elif kw == "le":
+                le = arg
+            elif kw == "content":
+                self[self.OFFSET_CONTENT:self.OFFSET_CONTENT+len(arg)] = arg
+            else:
+                raise TypeError, "Got an unexpected keyword argument '%s'" % kw
+        
+        print self
+        if le is not None:
+            if len(self) > self.OFFSET_CONTENT:
+                raise TypeError, "le can't be set when there is data to send"
+            else:
+                self[self.OFFSET_LE:self.OFFSET_LE+1] = (le,)
+        
+        for i in range(len(self)):
+            t = type(self[i])
+            if t == str:
+                self[i] = ord(self[i])
+            elif t != int:
+                raise TypeError, "APDU must consist of ints or one-byte strings, not %s (index %s)" % (t, i)
+    
+    def __str__(self):
+        result = "APDU(CLA=0x%x, INS=0x%x, P1=0x%x, P2=0x%x" % (
+            self[self.OFFSET_CLA], self[self.OFFSET_INS],
+            self[self.OFFSET_P1], self[self.OFFSET_P2])
+        if len(self) == self.OFFSET_CONTENT:
+            result = result + ", LE=0x%x)" % self[self.OFFSET_LE]
+        elif len(self) > self.OFFSET_CONTENT:
+            result = result + ", LC=0x%x) with %i(0x%x) bytes of contents" % (
+                self[self.OFFSET_LC], len(self)-self.OFFSET_CONTENT, len(self)-self.OFFSET_CONTENT)
+        else:
+            result = result + ")"
+        return result + ":\n" + hexdump(self.get_string())
+    
+    def __repr__(self):
+        result = "APDU(cla=0x%x, ins=0x%x, p1=0x%x, p2=0x%x" % (
+            self[self.OFFSET_CLA], self[self.OFFSET_INS],
+            self[self.OFFSET_P1], self[self.OFFSET_P2])
+        if len(self) == self.OFFSET_CONTENT:
+            result = result + ", le=0x%x)" % self[self.OFFSET_LE]
+        elif len(self) > self.OFFSET_CONTENT:
+            result = result + ", lc=0x%x, content=%s)" % (
+                self[self.OFFSET_LC], self[self.OFFSET_CONTENT:])
+        else:
+            result = result + ")"
+        return result
+    
+    def get_string(self):
+        return [chr(i) for i in self]
+
 if __name__ == "__main__":
     response = """
 0000:  07 A0 00 00 00 03 00 00 07 00 07 A0 00 00 00 62  ...............b
@@ -133,6 +237,9 @@ if __name__ == "__main__":
 0080:  09 53 4C 42 43 52 59 50 54 4F 07 00 05 A0 00 00  .SLBCRYPTO......
 0090:  00 01 01 00 06 A0 00 00 00 01 01 07 02 90 00     ............... 
 """ # 64k1 nach setup
-    response = sys.stdin.read()
-    parse_status(_unformat_hexdump(response)[:-2])
+    #response = sys.stdin.read()
+    #parse_status(_unformat_hexdump(response)[:-2])
+    
+    print APDU((1,2,3), lc=42, cla=0x23, le=4)
+    
     

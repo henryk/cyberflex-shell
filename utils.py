@@ -107,7 +107,7 @@ class APDU(list):
         Note: only set the le parameter if you don't send data."""
         
         if len(args) == 1 and type(args[0]) == APDU:
-            self.extend(args)
+            self.extend(args[0])
         else:
             for arg in args:
                 if type(arg) == str:
@@ -123,6 +123,8 @@ class APDU(list):
         
         if len(self) < 4:
             self.extend([0] * (4-len(self)))
+        if len(self) < self.OFFSET_LC+1:
+            self[self.OFFSET_LC:self.OFFSET_LC+1] = [None]
         
         le = None
         for (kw, arg) in kwargs.items():
@@ -152,7 +154,10 @@ class APDU(list):
                 self[self.OFFSET_LE:self.OFFSET_LE+1] = (le,)
         
         if self[self.OFFSET_LC] == None:
-            self[self.OFFSET_LC] = len(self)-self.OFFSET_CONTENT
+            if len(self) > self.OFFSET_CONTENT:
+                self[self.OFFSET_LC] = len(self)-self.OFFSET_CONTENT
+            else:
+                del self[self.OFFSET_LC]
         
         for i in range(len(self)):
             t = type(self[i])
@@ -188,7 +193,7 @@ class APDU(list):
         return result
     
     def get_string(self):
-        return [chr(i) for i in self]
+        return "".join([i is not None and chr(i) or "?" for i in self])
 
 if __name__ == "__main__":
     response = """
@@ -242,5 +247,6 @@ if __name__ == "__main__":
     #parse_status(_unformat_hexdump(response)[:-2])
     
     print APDU((1,2,3), cla=0x23, content="hallo", lc=None)
+    print APDU(1,2,3,4,None,4,6)
     
     

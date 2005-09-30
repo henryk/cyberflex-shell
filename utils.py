@@ -124,7 +124,6 @@ class APDU(list):
         if len(self) < 4:
             self.extend([0] * (4-len(self)))
         
-        print self
         le = None
         for (kw, arg) in kwargs.items():
             if kw == "cla":
@@ -146,12 +145,14 @@ class APDU(list):
             else:
                 raise TypeError, "Got an unexpected keyword argument '%s'" % kw
         
-        print self
         if le is not None:
             if len(self) > self.OFFSET_CONTENT:
                 raise TypeError, "le can't be set when there is data to send"
             else:
                 self[self.OFFSET_LE:self.OFFSET_LE+1] = (le,)
+        
+        if self[self.OFFSET_LC] == None:
+            self[self.OFFSET_LC] = len(self)-self.OFFSET_CONTENT
         
         for i in range(len(self)):
             t = type(self[i])
@@ -240,6 +241,6 @@ if __name__ == "__main__":
     #response = sys.stdin.read()
     #parse_status(_unformat_hexdump(response)[:-2])
     
-    print APDU((1,2,3), lc=42, cla=0x23, le=4)
+    print APDU((1,2,3), cla=0x23, content="hallo", lc=None)
     
     

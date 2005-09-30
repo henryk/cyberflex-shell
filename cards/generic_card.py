@@ -38,7 +38,12 @@ class Card:
         pin_value = binascii.a2b_hex("".join(args[1].split()))
         self.verify_pin(pin_number, pin_value)
     
+    def cmd_reset(self, *args):
+        self.card.reconnect(init=pycsc.SCARD_RESET_CARD)
+    
     COMMANDS = {
+        "reset": (cmd_reset, "reset",
+            """Reset the card."""),
         "verify": (cmd_verify, "verify pin_number pin_value",
             """Verify a PIN.""")
     }
@@ -64,7 +69,8 @@ class Card:
         return result
     
     def send_apdu(self, apdu):
-        apdu = apdu.get_string() ## FIXME
+        if isinstance(apdu, APDU):
+            apdu = apdu.get_string() ## FIXME
         if not Card._check_apdu(apdu):
             raise Exception, "Invalid APDU"
         if DEBUG:

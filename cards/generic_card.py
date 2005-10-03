@@ -11,7 +11,7 @@ class Card:
     ATRS = []
     DRIVER_NAME = "Generic"
     STATUS_WORDS = {
-        SW_OK: "Normal execution"
+        SW_OK: "Normal execution",
     }
 
     def __init__(self, card = None):
@@ -110,5 +110,7 @@ class Card:
             return "No command executed so far"
         elif self.last_sw[0] == "\x61":
             return "%i (0x%02x) bytes of response data can be retrieved with GetResponse." % ( (ord(self.last_sw[1])) * 2 )
+        elif self.last_sw[0] == "\x6C":
+            return "Bad value for LE, 0x%02x is the correct value." % ord(self.last_sw[1])
         else:
             return self.STATUS_WORDS.get(self.last_sw, "Unknown SW: %s" % binascii.b2a_hex(self.last_sw))

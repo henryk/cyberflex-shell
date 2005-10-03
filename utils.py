@@ -87,6 +87,7 @@ def _unformat_hexdump(dump):
 
 
 class APDU(list):
+    """Class for an APDU that mostly behaves like a list."""
     OFFSET_CLA = 0
     OFFSET_INS = 1
     OFFSET_P1 = 2
@@ -98,7 +99,6 @@ class APDU(list):
     
     LC_AUTO = None
 
-    """Class for an APDU that mostly behaves like a list."""
     def __init__(self, *args, **kwargs):
         """Creates a new APDU instance. Can be given positional parameters which 
         must be sequences of either strings (or strings themselves) or integers
@@ -195,6 +195,7 @@ class APDU(list):
         return result
     
     def get_string(self):
+        """Return the contents of this APDU as a binary string."""
         return "".join([i is not None and chr(i) or "?" for i in self])
 
 if __name__ == "__main__":

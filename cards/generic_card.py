@@ -1,4 +1,4 @@
-import crypto_utils, utils, pycsc, binascii
+import crypto_utils, utils, pycsc, binascii, fnmatch
 from utils import APDU
 
 DEBUG = True
@@ -10,8 +10,18 @@ class Card:
     SW_OK = '\x90\x00'
     ATRS = []
     DRIVER_NAME = "Generic"
-    STATUS_WORDS = {
+    ## Note: a key in this dictionary may either be a two-byte string containing
+    ## a binary status word, or a four-byte string containing a hexadecimal
+    ## status word, possibly with ? characters marking variable nibbles. 
+    ## Hexadecimal characters MUST be in uppercase. The values that four-byte
+    ## strings map to may be either format strings, that can make use of the 
+    ## keyword substitutions for SW1 and SW2 or a callable accepting two arguments 
+    ## (SW1, SW2) that returns a string.
+    STATUS_WORDS = { 
         SW_OK: "Normal execution",
+        '61??': "%(SW2)i (0x%(SW2)02x) bytes of response data can be retrieved with GetResponse.",
+        '6C??': "Bad value for LE, 0x%(SW2)02x is the correct value.",
+        '63C?': lambda SW1,SW2: "The counter has reached the value '%i'" % (SW2%16)
     }
 
     def __init__(self, card = None):
@@ -108,9 +118,19 @@ class Card:
     def decode_statusword(self):
         if self.last_sw is None:
             return "No command executed so far"
-        elif self.last_sw[0] == "\x61":
-            return "%i (0x%02x) bytes of response data can be retrieved with GetResponse." % ( (ord(self.last_sw[1])) * 2 )
-        elif self.last_sw[0] == "\x6C":
-            return "Bad value for LE, 0x%02x is the correct value." % ord(self.last_sw[1])
-        else:
-            return self.STATUS_WORDS.get(self.last_sw, "Unknown SW: %s" % binascii.b2a_hex(self.last_sw))
+        else: 
+            desc = self.STATUS_WORDS.get(self.last_sw)
+            if desc is not None:
+                return desc
+            else:
+                target = binascii.b2a_hex(self.last_sw).upper()
+                for (key, value) in self.STATUS_WORDS.items():
+                    if fnmatch.fnmatch(target, key):
+                        if isinstance(value, str):
+                            return value % { "SW1": ord(self.last_sw[0]), 
+                                "SW2": ord(self.last_sw[1]) }
+                        elif callable(value):
+                            return value( ord(self.last_sw[0]),
+                                ord(self.last_sw[1]) )
+        
+        return "Unknown SW: %s" % binascii.b2a_hex(self.last_sw)

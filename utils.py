@@ -86,117 +86,182 @@ def _unformat_hexdump(dump):
     return binascii.a2b_hex("".join([e != " " and e or "" for e in hexdump]))
 
 
-class APDU(list):
-    """Class for an APDU that mostly behaves like a list."""
+class APDU:
+    """Class for an APDU.."""
     OFFSET_CLA = 0
     OFFSET_INS = 1
     OFFSET_P1 = 2
     OFFSET_P2 = 3
-    OFFSET_P3 = 4
-    OFFSET_LC = 4
     OFFSET_LE = 4
-    OFFSET_CONTENT = 5
+    OFFSET_LC = 4
     
-    LC_AUTO = None
-
     def __init__(self, *args, **kwargs):
         """Creates a new APDU instance. Can be given positional parameters which 
         must be sequences of either strings (or strings themselves) or integers
         specifying byte values that will be concatenated in order. Alternatively
         you may give exactly one positional argument that is an APDU instance.
-        The keyword arguments can then be used to override those values.
-        Keywords recognized are: cla, ins, p1, p2, p3, lc, le, content.
-        Note: only set the le parameter if you don't send data."""
+        After all the positional arguments have been concatenated they must
+        form a valid APDU!
         
-        if len(args) == 1 and type(args[0]) == APDU:
-            self.extend(args[0])
+        The keyword arguments can then be used to override those values.
+        Keywords recognized are: cla, ins, p1, p2, lc, le, content."""
+        
+        initbuff = list()
+        
+        if len(args) == 1 and isinstance(args[0], APDU):
+            initbuff.extend(args[0].get_string())
         else:
             for arg in args:
                 if type(arg) == str:
-                    self.extend(arg)
+                    initbuff.extend(arg)
                 elif hasattr(arg, "__iter__"):
                     for elem in arg:
                         if hasattr(elem, "__iter__"):
-                            self.extend(elem)
+                            initbuff.extend(elem)
                         else:
-                            self.append(elem)
+                            initbuff.append(elem)
                 else:
-                    self.append(arg)
+                    initbuff.append(arg)
         
-        if len(self) < 4:
-            self.extend([0] * (4-len(self)))
-        if len(self) < self.OFFSET_LC+1:
-            self[self.OFFSET_LC:self.OFFSET_LC+1] = [self.LC_AUTO]
+        for i in range(len(initbuff)):
+            t = type(initbuff[i])
+            if t == str:
+                initbuff[i] = ord(initbuff[i])
+            elif t != int:
+                raise TypeError, "APDU must consist of ints or one-byte strings, not %s (index %s)" % (t, i)
         
-        le = None
+        if len(initbuff) < 4:
+            initbuff.extend( [0] * (4-len(initbuff)) )
+        
+        self.__dict__.update( {
+            "cla": initbuff[self.OFFSET_CLA],
+            "ins": initbuff[self.OFFSET_INS],
+            "p1": initbuff[self.OFFSET_P1],
+            "p2": initbuff[self.OFFSET_P2]
+        } )
+        
+        lc_was_set = False
+        
+        if len(initbuff) == 4: ## ISO case 1
+            self.le = 0
+            self.lc = 0
+            self.content = list()
+        elif len(initbuff) == 5: ## ISO case 2
+            self.le = initbuff[self.OFFSET_LE]
+            self.lc = 0
+            self.content = list()
+        elif len(initbuff) > 5:
+            self.lc = initbuff[self.OFFSET_LC]
+            lc_was_set = True
+            if len(initbuff) == 5 + self.lc: ## ISO case 3
+                self.le = 0
+                self.content = initbuff[5:5+self.lc]
+            elif len(initbuff) == 5 + self.lc + 1: ## ISO case 4
+                self.le = initbuff[-1]
+                self.content = initbuff[5:5+self.lc]
+            else:
+                raise ValueError, "Invalid APDU, length(%i) != 4 + 1 + lc(%i) + 1" % (len(initbuff), self.lc)
+        else:
+            raise ValueError, "Invalid APDU, impossible"
+        
         for (kw, arg) in kwargs.items():
             if kw == "cla":
-                self[self.OFFSET_CLA] = arg
+                self.cla = arg
             elif kw == "ins":
-                self[self.OFFSET_INS] = arg
+                self.ins = arg
             elif kw == "p1":
-                self[self.OFFSET_P1] = arg
+                self.p1 = arg
             elif kw == "p2":
-                self[self.OFFSET_P2] = arg
-            elif kw == "p3":
-                self[self.OFFSET_P3:self.OFFSET_P3+1] = (arg,)
+                self.p2 = arg
             elif kw == "lc":
-                self[self.OFFSET_LC:self.OFFSET_LC+1] = (arg,)
+                self.lc = arg
+                lc_was_set = True
             elif kw == "le":
-                le = arg
+                self.le = arg
             elif kw == "content":
-                self[self.OFFSET_CONTENT:self.OFFSET_CONTENT+len(arg)] = arg
+                self.content = arg
             else:
                 raise TypeError, "Got an unexpected keyword argument '%s'" % kw
         
-        if le is not None:
-            if len(self) > self.OFFSET_CONTENT:
-                raise TypeError, "le can't be set when there is data to send"
-            else:
-                self[self.OFFSET_LE:self.OFFSET_LE+1] = (le,)
-        
-        if self[self.OFFSET_LC] == self.LC_AUTO:
-            if len(self) > self.OFFSET_CONTENT:
-                self[self.OFFSET_LC] = len(self)-self.OFFSET_CONTENT
-            else:
-                del self[self.OFFSET_LC]
-        
-        for i in range(len(self)):
-            t = type(self[i])
-            if t == str:
-                self[i] = ord(self[i])
-            elif t != int:
-                raise TypeError, "APDU must consist of ints or one-byte strings, not %s (index %s)" % (t, i)
+        if not lc_was_set:
+            self.lc = len(self.content)
     
     def __str__(self):
-        result = "APDU(CLA=0x%x, INS=0x%x, P1=0x%x, P2=0x%x" % (
-            self[self.OFFSET_CLA], self[self.OFFSET_INS],
-            self[self.OFFSET_P1], self[self.OFFSET_P2])
-        if len(self) == self.OFFSET_CONTENT:
-            result = result + ", LE=0x%x)" % self[self.OFFSET_LE]
-        elif len(self) > self.OFFSET_CONTENT:
-            result = result + ", LC=0x%x) with %i(0x%x) bytes of contents" % (
-                self[self.OFFSET_LC], len(self)-self.OFFSET_CONTENT, len(self)-self.OFFSET_CONTENT)
-        else:
+        result = len(self.content) != self.lc and "Invalid " or ""
+        result = result + "APDU(CLA=0x%x, INS=0x%x, P1=0x%x, P2=0x%x" % (
+            self.cla, self.ins, self.p1, self.p2)
+        if self.lc == 0 and self.le == 0: ## ISO case 1
             result = result + ")"
+        elif self.lc == 0 and self.le > 0: ## ISO case 2:
+            result = result + ", LE=0x%x)" % self.le
+        elif self.lc > 0 and self.le == 0: ## ISO case 3
+            result = result + ", LC=0x%x)" % self.lc
+        elif self.lc > 0 and self.le > 0: ## ISO case 4:
+            result = result + ", LC=0x%x, LE=0x%x)" % (
+                self.lc, self.le
+            )
+        else:
+            raise ValueError, "Impossible error. Call the X files."
+        
+        if len(self.content) > 0:
+            result = result + " with %i(0x%x) bytes of contents" % (
+                len(self.content), len(self.content) 
+            )
+        
         return result + ":\n" + hexdump(self.get_string())
     
     def __repr__(self):
-        result = "APDU(cla=0x%x, ins=0x%x, p1=0x%x, p2=0x%x" % (
-            self[self.OFFSET_CLA], self[self.OFFSET_INS],
-            self[self.OFFSET_P1], self[self.OFFSET_P2])
-        if len(self) == self.OFFSET_CONTENT:
-            result = result + ", le=0x%x)" % self[self.OFFSET_LE]
-        elif len(self) > self.OFFSET_CONTENT:
-            result = result + ", lc=0x%x, content=%s)" % (
-                self[self.OFFSET_LC], self[self.OFFSET_CONTENT:])
+        result = "APDU(CLA=0x%x, INS=0x%x, P1=0x%x, P2=0x%x" % (
+            self.cla, self.ins, self.p1, self.p2)
+        if self.lc == 0 and self.le == 0: ## ISO case 1
+            pass
+        elif self.lc == 0 and self.le > 0: ## ISO case 2:
+            result = result + ", LE=0x%x" % self.le
+        elif self.lc > 0 and self.le == 0: ## ISO case 3
+            result = result + ", LC=0x%x" % self.lc
+        elif self.lc > 0 and self.le > 0: ## ISO case 4:
+            result = result + ", LC=0x%x, LE=0x%x" % (
+                self.lc, self.le
+            )
+        else:
+            raise ValueError, "Impossible error. Call the X files."
+        
+        if len(self.content) > 0:
+            result = result + ", content=%r)" % self.content
         else:
             result = result + ")"
+        
         return result
+    
+    _bytevars = ("cla", "ins", "p1", "p2", "lc", "le")
+    _bytelistvars = ("content",)
+    def __setattr__(self, name, value):
+        namelower = name.lower()
+        if namelower in self._bytevars:
+            if isinstance(value, int):
+                self.__dict__[namelower] = value
+            elif isinstance(value, str):
+                self.__dict__[namelower] = ord(value)
+            else:
+                raise ValueError, "'%s' attribute can only be a byte, that is: int or str, not %s" % (namelower, type(value))
+        elif namelower in self._bytelistvars:
+            if isinstance(value, str):
+                self.__dict__[namelower] = [ord(e) for e in value]
+            elif isinstance(value, list):
+                self.__dict__[namelower] = [int(e) for e in value]
+            else:
+                raise ValueError, "'%s' attribute can only be a byte list, that is: list of int or str, not %s" (namelower, type(value))
+        else:
+            self.__dict__[name] = value
     
     def get_string(self):
         """Return the contents of this APDU as a binary string."""
-        return "".join([i is not None and chr(i) or "?" for i in self])
+        contents = [self.cla, self.ins, self.p1, self.p2]
+        if self.lc > 0:
+            contents.extend( [self.lc] + self.content)
+        if self.le > 0:
+            contents.append( self.le )
+        return "".join([i is not None and chr(i) or "?" for i in contents])
 
 if __name__ == "__main__":
     response = """
@@ -249,7 +314,6 @@ if __name__ == "__main__":
     #response = sys.stdin.read()
     #parse_status(_unformat_hexdump(response)[:-2])
     
-    print APDU((1,2,3), cla=0x23, content="hallo", lc=None)
-    print APDU(1,2,3,4,None,4,6)
-    
+    print APDU((1,2,3), cla=0x23, content="hallo")
+    print APDU(1,2,3,4,2,4,6)
     

@@ -16,7 +16,7 @@ SECURE_CHANNEL_MACENC = 3
 MAC_LENGTH = 8
 
 class Cyberflex_Card(Java_Card):
-    APDU_INITIALIZE_UPDATE = APDU('\x80\x50\x00\x00\x08')
+    APDU_INITIALIZE_UPDATE = APDU('\x80\x50\x00\x00\x00')
     APDU_EXTERNAL_AUTHENTICATE = APDU('\x84\x82\x00\x00')
     APDU_GET_STATUS = APDU('\x84\xF2\x00\x00\x02\x4f\x00')
     APDU_DELETE = APDU('\x84\xe4\x00\x00')
@@ -112,7 +112,7 @@ class Cyberflex_Card(Java_Card):
         host_challenge = crypto_utils.generate_host_challenge()
         
         apdu = APDU(self.APDU_INITIALIZE_UPDATE,
-            p1 = keyset_version, p2 = key_index, lc = APDU.LC_AUTO,
+            p1 = keyset_version, p2 = key_index,
             content = host_challenge)
         
         self.secure_channel_state = SECURE_CHANNEL_NONE
@@ -140,7 +140,7 @@ class Cyberflex_Card(Java_Card):
             self.session_key_enc, card_challenge, host_challenge)
         
         apdu = APDU(self.APDU_EXTERNAL_AUTHENTICATE,
-            p1 = security_level, p2 = 0, lc = APDU.LC_AUTO,
+            p1 = security_level, p2 = 0,
             content = host_cryptogram)
             
         self.secure_channel_state = SECURE_CHANNEL_MAC
@@ -182,7 +182,7 @@ class Cyberflex_Card(Java_Card):
             print "Cowardly refusing to delete the card manager."
             raise ValueError, "Undeletable object"
         tlvaid = chr(0x4f) + chr(len(aid)) + aid
-        apdu = APDU(self.APDU_DELETE, lc = APDU.LC_AUTO,
+        apdu = APDU(self.APDU_DELETE,
             content = tlvaid)
         result = self.send_apdu(apdu)
         

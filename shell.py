@@ -102,31 +102,56 @@ class Shell:
             command =  match.group(1)
             argstring = match.group(2) and match.group(2).strip() or ""
             
+            function = None
+            object = None
+            args = []
             command_mapping = self.get_command_mapping()
-            if not command_mapping.has_key(command):
-                print "Unknown command '%s'. Try 'help' to list known commands." % command
-            else:
+            
+            if command_mapping.has_key(command):
                 command_set = command_mapping[command]
                 object = command_set[0] ## Implicit first argument, if set
                 function = command_set[1][command] ## The actual function to call
                 
+                if object is not None:
+                    args.append(object)
+                
+            else:
+                if self.fallback is None:
+                    print "Unknown command '%s'. Try 'help' to list known commands." % command
+                else:
+                    ## Fall back to the fallback function/method
+                    ## It will receive the command executed as first parameter
+                    args.append(command)
+                    function = self.fallback
+                    object = None ## fallback must be a function or a bound method
+            
+            if function is not None:
                 (argnames, varargs, varkw, defaults) = \
                         inspect.getargspec(function)
                 
                 ## maximum number of arguments the function accepts
-                args_possible = len(argnames) - (object and 1 or 0)
+                args_possible = len(argnames) - len(args)
                 ## minimum number of argument the function accepts
                 args_needed = args_possible - (defaults and len(defaults) or 0)
                 
-                args = object and [object] or []
+                args_so_far = 0
+                
                 while len(argstring) > 0:
                     match = self._argumentregex.match(argstring)
                     if not match:
                         break
                     else:
+                        args_so_far = args_so_far + 1
                         current_arg = match.group(1) or match.group(2) or match.group(3) or ""
                         argstring = match.group(4) or ""
                         args.append(current_arg)
+                
+                if args_so_far < args_needed:
+                    print "The %s command takes at least %i arguments. You gave %i." % (command, args_needed, args_so_far)
+                    return
+                if args_so_far > args_possible:
+                    print "The %s command takes at most %i arguments. You gave %i." % (command, args_possible, args_so_far)
+                    return
                 
                 return function(*args)
 
@@ -246,6 +271,11 @@ class Shell:
         else:
             raise ValueError, "Need either name and value, or no parameters at all."
     
+    def cmd_unset(self, name):
+        """Unset a variable."""
+        if self.env.has_key(name):
+            del self.env[name]
+
     SHORT_HELP_FORMATSTRING = "%(name)-20s %(description)s"
     LONG_HELP_FORMATSTRING = "%(description)s\nSynopsis: %(name)s %(formatted_parameters)s\n%(long_description)s"
     def cmd_help(self, command=None):
@@ -263,6 +293,7 @@ class Shell:
     COMMANDS = {
         "exit": cmd_exit,
         "set": cmd_set,
+        "unset": cmd_unset,
         "help": cmd_help
     }
     

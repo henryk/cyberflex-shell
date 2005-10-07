@@ -39,10 +39,98 @@ class Shell:
         
         self._commandsets = [] ## This contains command sets, it's a list of (object, dictionary) tuples
         self.basename = basename
-        self.env = {}
+        self.env = {"print_backtrace": "true"}
         
         self.register_commands(self)
+        self.fallback = None
+        self.pre_hook = []
+        self.post_hook = []
+        self.prompt = ""
     
+    def get_prompt(self):
+        return self.prompt
+    def set_prompt(self, prompt):
+        self.prompt = prompt
+    
+    def register_pre_hook(self, function):
+        self.pre_hook.append(function)
+    
+    def register_post_hook(self, function):
+        self.post_hook.append(function)
+    
+    def unregister_pre_hook(self, function):
+        self.pre_hook.remove(function)
+    
+    def unregister_post_hook(self, function):
+        self.post_hook.remove(function)
+    
+    
+    
+    def run(self):
+        """Runs a loop to read commands and execute them. This function does 
+        not (normally) return."""
+        
+        line = ""
+        
+        while True:
+            try:
+                line = raw_input("%s> " % self.prompt)
+            except EOFError:
+                print ## line break (there probably was none after the prompt)
+                break
+            except KeyboardInterrupt:
+                print ## only clear the current command
+            
+            try:
+                self.parse_and_execute(line)
+            except Exception:
+                exctype, value = sys.exc_info()[:2]
+                if exctype == exceptions.SystemExit:
+                    raise exctype, value
+                print "%s: %s" % (exctype, value)
+                if self.env.get("print_backtrace", "") != "":
+                    traceback.print_tb(sys.exc_info()[2])
+    
+    _commandregex = re.compile(r'\s*(\w+)(\s+\S.*)?')
+    _argumentregex = re.compile(r"""\s*(?:"((?:[^"]|\"|\\)*)"|'([^']*)'|(\S+))(\s+\S.*)?""")
+    def parse_and_execute(self, line):
+        """Parses a command line and executes the associated function."""
+        match = self._commandregex.match(line)
+        if not match:
+            return
+        else:
+            command =  match.group(1)
+            argstring = match.group(2) and match.group(2).strip() or ""
+            
+            command_mapping = self.get_command_mapping()
+            if not command_mapping.has_key(command):
+                print "Unknown command '%s'. Try 'help' to list known commands." % command
+            else:
+                command_set = command_mapping[command]
+                object = command_set[0] ## Implicit first argument, if set
+                function = command_set[1][command] ## The actual function to call
+                
+                (argnames, varargs, varkw, defaults) = \
+                        inspect.getargspec(function)
+                
+                ## maximum number of arguments the function accepts
+                args_possible = len(argnames) - (object and 1 or 0)
+                ## minimum number of argument the function accepts
+                args_needed = args_possible - (defaults and len(defaults) or 0)
+                
+                args = object and [object] or []
+                while len(argstring) > 0:
+                    match = self._argumentregex.match(argstring)
+                    if not match:
+                        break
+                    else:
+                        current_arg = match.group(1) or match.group(2) or match.group(3) or ""
+                        argstring = match.group(4) or ""
+                        args.append(current_arg)
+                
+                return function(*args)
+
+
     def _make_cmdset(target, commands):
         """Convenience function for code shared between register_commands 
         and unregister_commands."""
@@ -65,7 +153,6 @@ class Shell:
         
         return (new_target, new_commands)
     _make_cmdset = staticmethod(_make_cmdset)
-    
     def register_commands(self, target, commands=None):
         """Register an object to provide commands.
         When commands is None or not given then target must either be
@@ -147,8 +234,17 @@ class Shell:
         "Exit the shell."
         sys.exit(0)
     
+    SETTINGS_FORMATSTRING="%s=%s"
     def cmd_set(self, name=None, value=None):
         "Set a variable or print current settings."
+        
+        if name == None and value == None:
+            for (name, value) in self.env.items():
+                print self.SETTINGS_FORMATSTRING % (name, value)
+        elif name is not None and value is not None:
+            self.env[name] = value
+        else:
+            raise ValueError, "Need either name and value, or no parameters at all."
     
     SHORT_HELP_FORMATSTRING = "%(name)-20s %(description)s"
     LONG_HELP_FORMATSTRING = "%(description)s\nSynopsis: %(name)s %(formatted_parameters)s\n%(long_description)s"
@@ -172,5 +268,5 @@ class Shell:
     
 if __name__ == "__main__":
     s = Shell("foobar")
-    
+    s.run()
     

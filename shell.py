@@ -34,6 +34,8 @@ class Shell:
             
             readline.parse_and_bind("tab: complete")
             ## FIXME basenamerc
+            
+            readline.set_completer(self.complete)
         else:
             print >>sys.stderr, "Warning: No readline module available. Most functionality will be missing."
         
@@ -74,7 +76,13 @@ class Shell:
         
         while True:
             try:
+                for function in self.pre_hook:
+                    function()
+                
                 line = raw_input("%s> " % self.prompt)
+                
+                for function in self.post_hook:
+                    function()
             except EOFError:
                 print ## line break (there probably was none after the prompt)
                 break
@@ -154,6 +162,52 @@ class Shell:
                     return
                 
                 return function(*args)
+    
+    def complete(self, line, state):
+        """Try to complete a command line. Known command names first,
+        then programmable completion (if applicable)."""
+        
+        match = self._commandregex.match(line)
+        if not match:
+            groups = (None, None)
+        else:
+            groups = match.groups()
+        
+        found = -1
+        if groups[1] is None:
+            ## (Possibly incomplete) command
+            command_to_match = groups[0] or ""
+            retval = False
+            
+            for cmdset in self._commandsets:
+                for (command, function) in cmdset[1].items():
+                    if command[:len(command_to_match)] == command_to_match:
+                        found = found + 1
+                        if found == state:
+                            retval = command
+                        
+                        ## We break when we know there are at least 2 matches
+                        ##  and the correct match according to the current state
+                        ##  has been reached. Normally it would be enough
+                        ##  to break when found == state, but we want to know
+                        ##  if this is the only match, so that we can append a
+                        ##  space
+                        if found > 0 and found >= state:
+                            break 
+                
+                if found > 0 and found >= state:
+                    break 
+            
+            if found == 0 and sys.modules.has_key("readline"):
+                ## There is exactly one command that matches. Append a space
+                ##  after it
+                return retval + " "
+            return retval
+            
+        else:
+            return False
+        
+        return False
 
 
     def _make_cmdset(target, commands):

@@ -14,7 +14,7 @@ class Java_Card(Card):
 
     def select_application(self, aid):
         result = self.send_apdu(
-            APDU(self.APDU_SELECT_APPLICATION, lc = APDU.LC_AUTO,
+            APDU(self.APDU_SELECT_APPLICATION,
             content = aid) )
         return result
     

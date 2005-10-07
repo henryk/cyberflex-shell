@@ -37,7 +37,7 @@ class Card:
     
     def verify_pin(self, pin_number, pin_value):
         apdu = APDU(self.APDU_VERIFY_PIN, P2 = pin_number,
-            lc = APDU.LC_AUTO, content = pin_value)
+            content = pin_value)
         result = self.send_apdu(apdu)
         return result == self.SW_OK
     

@@ -36,6 +36,7 @@ class Shell:
             ## FIXME basenamerc
             
             readline.set_completer(self.complete)
+            readline.set_completer_delims("")
         else:
             print >>sys.stderr, "Warning: No readline module available. Most functionality will be missing."
         
@@ -99,7 +100,7 @@ class Shell:
                 if self.env.get("print_backtrace", "") != "":
                     traceback.print_tb(sys.exc_info()[2])
     
-    _commandregex = re.compile(r'\s*(\w+)(\s+\S.*)?')
+    _commandregex = re.compile(r'\s*(\w+)(\s+.*)?')
     _argumentregex = re.compile(r"""\s*(?:"((?:[^"]|\"|\\)*)"|'([^']*)'|(\S+))(\s+\S.*)?""")
     def parse_and_execute(self, line):
         """Parses a command line and executes the associated function."""

@@ -82,8 +82,6 @@ class Shell:
                 
                 line = raw_input("%s> " % self.prompt)
                 
-                for function in self.post_hook:
-                    function()
             except EOFError:
                 print ## line break (there probably was none after the prompt)
                 break
@@ -92,6 +90,9 @@ class Shell:
             
             try:
                 self.parse_and_execute(line)
+                
+                for function in self.post_hook:
+                    function()
             except Exception:
                 exctype, value = sys.exc_info()[:2]
                 if exctype == exceptions.SystemExit:

@@ -138,10 +138,10 @@ class Shell:
                 (argnames, varargs, varkw, defaults) = \
                         inspect.getargspec(function)
                 
-                ## maximum number of arguments the function accepts
-                args_possible = len(argnames) - len(args)
                 ## minimum number of argument the function accepts
-                args_needed = args_possible - (defaults and len(defaults) or 0)
+                args_needed = len(argnames) - len(args) - (defaults and len(defaults) or 0)
+                ## maximum number of arguments the function accepts
+                args_possible = varargs is None and (len(argnames) - len(args)) or None
                 
                 args_so_far = 0
                 
@@ -158,11 +158,14 @@ class Shell:
                 if args_so_far < args_needed:
                     print "The %s command takes at least %i arguments. You gave %i." % (command, args_needed, args_so_far)
                     return
-                if args_so_far > args_possible:
+                if args_possible is not None and args_so_far > args_possible:
                     print "The %s command takes at most %i arguments. You gave %i." % (command, args_possible, args_so_far)
                     return
                 
-                return function(*args)
+                try:
+                    return function(*args)
+                except NotImplementedError:
+                    print "Unknown command '%s'. Try 'help' to list known commands." % command
     
     def complete(self, line, state):
         """Try to complete a command line. Known command names first,

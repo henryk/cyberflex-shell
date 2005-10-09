@@ -188,39 +188,36 @@ class Cyberflex_Card(Java_Card):
         
         return result[0] == 0x0
     
-    def cmd_delete(self, *args):
-        if len(args) != 1:
-            raise TypeError, "Must have exactly one argument."
-        aid = binascii.a2b_hex("".join(args[0].split()))
+    def cmd_delete(self, aid):
+        """Delete the object identified by aid."""
+        aid = binascii.a2b_hex("".join(aid.split()))
         self.delete(aid)
     
-    def cmd_status(self, *args):
-        if len(args) > 1:
-            raise TypeError, "Can have at most one argument."
-        if len(args) == 1:
-            reference_control = int(args[0], 0)
-        else:
-            reference_control = 0x20
+    def cmd_status(self, reference_control = "0x20"):
+        """Execute a GetStatus command and return the result."""
+        reference_control = int(reference_control, 0)
         result = self.get_status(reference_control)
         utils.parse_status(result[:-2])
     
-    def cmd_secure(self, *args):
-        if len(args) == 0:
+    def cmd_secure(self, keyset_version=None, key_index=None, security_level=None):
+        """Open a secure channel. 
+        If given, keyset_version and key_index must be integers while security_level can be one of 0, clear, 1, mac, 3, macenc, mac+enc."""
+        if keyset_version is None and key_index is None and security_level is None:
             arg1 = 0
             arg2 = 0
             arg3int = SECURE_CHANNEL_MAC
-        elif len(args)== 3:
-            arg1 = int(args[0],0)
-            arg2 = int(args[1],0)
+        elif keyset_version is not None and key_index is not None and security_level is not None:
+            arg1 = int(keyset_version,0)
+            arg2 = int(key_index,0)
             
             if arg1 not in range(256):
                 raise ValueError, "keyset_version must be between 0 and 255 (inclusive)."
             if arg2 not in (0,1):
                 raise ValueError, "key_index must be 0 or 1."
             
-            arg3 = args[2].strip().lower()
+            arg3 = security_level.strip().lower()
             try:
-                arg3int = int(args[2],0)
+                arg3int = int(security_level,0)
             except:
                 arg3int = None
             
@@ -234,19 +231,19 @@ class Cyberflex_Card(Java_Card):
             raise TypeError, "Must give none or three arguments."
         self.open_secure_channel(arg1, arg2, arg3int)
     
-    def cmd_setkey(self, *args):
-        if len(args) != 2: 
-            raise TypeError, "Need exactly two arguments: keyset index and key"
-        arg1 = args[0].strip().lower()
+    def cmd_setkey(self, key_index, key):
+        """Set a key in the current keyset. 
+        key_index should be one of 0, all, 1, enc, auth, 2, mac, 3, kek."""
+        arg1 = key_index.strip().lower()
         try:
             arg1int = int(arg1,0)
         except:
             arg1int = None
         
-        if len(args[1]) != 16:
-            arg2 = binascii.a2b_hex("".join(args[1].split()))
+        if len(key) != 16:
+            arg2 = binascii.a2b_hex("".join(key.split()))
         else:
-            arg2 = args[1]
+            arg2 = key
         
         if len(arg2) != 16:
             raise TypeError, "Need either exactly 16 binary bytes or 16 hexadezimal bytes for the key argument."
@@ -263,27 +260,27 @@ class Cyberflex_Card(Java_Card):
         if all or arg1int == KEY_KEK or arg1 == "kek":
             self.keyset[KEY_KEK] = arg2
     
-    def cmd_printkeyset(self, *args):
+    def cmd_printkeyset(self):
+        """Print the current keyset."""
         print "ENC,AUTH:", utils.hexdump(self.keyset[KEY_AUTH], short=True)
         print "MAC:     ", utils.hexdump(self.keyset[KEY_MAC], short=True)
         print "KEK:     ", utils.hexdump(self.keyset[KEY_KEK], short=True)
     
-    def cmd_resetkeyset(self, *args):
+    def cmd_resetkeyset(self):
+        """Reset the keyset to the default keyset for this card."""
         self.keyset = dict(DEFAULT_KEYSET)
     
-    def cmd_savekeyset(self, *args):
-        if len(args) != 1:
-            raise TypeError, "Must give exactly one argument: the name of the file to save the keyset in."
-        fd = file(args[0], "w")
+    def cmd_savekeyset(self, filename):
+        """Saves the keyset to the named file."""
+        fd = file(filename, "w")
         fd.write(self.keyset[KEY_AUTH])
         fd.write(self.keyset[KEY_MAC])
         fd.write(self.keyset[KEY_KEK])
         fd.close()
     
-    def cmd_loadkeyset(self, *args):
-        if len(args) != 1:
-            raise TypeError, "Must give exactly one argument: the name of the file to load the keyset from."
-        fd = file(args[0], "r")
+    def cmd_loadkeyset(self, filename):
+        """Loads the keyset from the named file."""
+        fd = file(filename, "r")
         keys = fd.read(16*3)
         if len(keys) != 16*3:
             del keys
@@ -311,22 +308,14 @@ class Cyberflex_Card(Java_Card):
 
     COMMANDS = dict(Java_Card.COMMANDS)
     COMMANDS.update( {
-        "status": (cmd_status, "status [reference_control]", 
-            """Execute a GetStatus command and return the result."""),
-        "open_secure_channel": (cmd_secure, "open_secure_channel [keyset_version key_index security_level]",
-            """Open a secure channel. If given, keyset_version and key_index must be integers while security_level can be one of 0, clear, 1, mac, 3, macenc, mac+enc."""),
-        "set_key": (cmd_setkey, "set_key key_index key",
-            """Set a key in the current keyset. key_index should be one of 0, all, 1, enc, auth, 2, mac, 3, kek."""),
-        "print_keyset": (cmd_printkeyset, "print_keyset",
-            """Print the current keyset."""),
-        "reset_keyset": (cmd_resetkeyset, "reset_keyset",
-            """Reset the keyset to the default keyset for this card."""),
-        "save_keyset": (cmd_savekeyset, "save_keyset filename",
-            """Saves the keyset to the named file."""),
-        "load_keyset": (cmd_loadkeyset, "load_keyset filename",
-            """Loads the keyset from the named file."""),
-        "delete": (cmd_delete, "delete aid",
-            """Delete the object identified by aid.""")
+        "status": cmd_status,
+        "open_secure_channel": cmd_secure,
+        "set_key": cmd_setkey,
+        "print_keyset": cmd_printkeyset,
+        "reset_keyset": cmd_resetkeyset,
+        "save_keyset": cmd_savekeyset,
+        "load_keyset": cmd_loadkeyset,
+        "delete": cmd_delete
         } )
     STATUS_WORDS = dict(Java_Card.STATUS_WORDS)
     STATUS_WORDS.update( {

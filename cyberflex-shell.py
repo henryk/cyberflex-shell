@@ -2,74 +2,15 @@
 # -*- coding: iso-8859-1 -*-
 
 import pycsc, utils, cards, os, re, binascii, sys, exceptions, traceback
+from shell import Shell
 print_backtrace = True
 
-try:
-    import readline
-except ImportError:
-    print "No readline available"
-
-if sys.modules.has_key("readline"):
-    histfile = os.path.join(os.environ["HOME"], ".cyberflex-shell.history")
-    try:
-        readline.read_history_file(histfile)
-    except IOError:
-        pass
-    import atexit
-    atexit.register(readline.write_history_file, histfile)
-    del os, histfile
-    
-    readline.parse_and_bind("tab: complete")
-    
-class Cyberflex_Shell_Completer:
-    def __init__(self, *commands):
-        self.commands = commands
-        self.card = None
-    def set_card(self, card):
-        self.card = card
-    def complete(self, text, state):
-        found = -1
-        def check(text, state, cmd, found):
-            if text == cmd[:len(text)]:
-                found = found+1
-            if found == state:
-                return (found, cmd)
-            else:
-                return (found, None)
-        
-        if self.card is not None:
-            for (cmd, cmdspec) in self.card.COMMANDS.items():
-                (found, retval) = check(text, state, cmd, found)
-                if retval is not None:
-                    return retval
-        for cmdset in self.commands:
-            for (cmd, cmdspec) in cmdset.items():
-                (found, retval) = check(text, state, cmd, found)
-                if retval is not None:
-                    return retval
-        
-        return False
-
-def cmd_exit(card, *args):
-    sys.exit()
-def cmd_help(card, *args):
-    print "Cyberflex-shell help"
-    print "\n%s Card commands:" % card.DRIVER_NAME
-    for (cmd, cmdspec) in card.COMMANDS.items():
-        print "%s\n\t\t%s" % (cmdspec[1], cmdspec[2])
-    print "\nShell commands:"
-    for (cmd, cmdspec) in COMMANDS.items():
-        print "%s\n\t\t%s" % (cmdspec[1], cmdspec[2])
 def cmd_atr(card, *args):
+    """Print the ATR of the currently inserted card."""
     print "ATR: %s" % utils.hexdump(card.card.status()['ATR'], short=True)
 
 COMMANDS = {
-    "exit": (cmd_exit, "exit", 
-        """Exit the shell."""),
-    "help": (cmd_help, "help",
-        """Print this help."""),
-    "atr": (cmd_atr, "atr",
-        """Print the ATR of the currently inserted card.""")
+    "atr": cmd_atr
 }
 
 if __name__ == "__main__":
@@ -98,68 +39,34 @@ if __name__ == "__main__":
     card_class = cards.find_class(newState[0]['Atr'])
     
     card = card_class()
+    shell = Shell("cyberflex-shell")
+    shell.register_commands(card, COMMANDS)
+    shell.register_commands(card)
     
-    if sys.modules.has_key("readline"):
-        completer = Cyberflex_Shell_Completer(COMMANDS)
-        completer.set_card(card)
-        readline.set_completer(completer.complete)
-
+    def _update_prompt():
+        shell.set_prompt(card.get_prompt() + " ")
+    shell.register_pre_hook(_update_prompt)
     
-    line = ""
-    apduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}$', re.I)
-    while True:
-        try:
-            line = raw_input("%s > " % card.get_prompt())
-        except EOFError:
-            print
-            break
-        
-        line = line.strip()
-        if line == "":
-            continue
-        
+    def _clear_sw():
         card.sw_changed = False
+    shell.register_pre_hook(_clear_sw)
+    
+    apduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}$', re.I)
+    def do_raw_apdu(*args):
+        apdu_string = "".join(args)
+        if not apduregex.match(apdu_string):
+            raise NotImplementedError
         
-        parts = line.split()
-        cmd = parts[0]
-        if card.COMMANDS.has_key(cmd.lower()):
-            cmdspec = card.COMMANDS[cmd.lower()]
-            try:
-                cmdspec[0](card, *parts[1:])
-            except Exception:
-                exctype, value = sys.exc_info()[:2]
-                if exctype == exceptions.SystemExit:
-                    raise exctype, value
-                print "%s: %s" % (exctype, value)
-                if print_backtrace:
-                    traceback.print_tb(sys.exc_info()[2])
-            
-        elif COMMANDS.has_key(cmd.lower()):
-            cmdspec = COMMANDS[cmd.lower()]
-            try:
-                cmdspec[0](card, *parts[1:])
-            except Exception:
-                exctype, value = sys.exc_info()[:2]
-                if exctype == exceptions.SystemExit:
-                    raise exctype, value
-                print "%s: %s" % (exctype, value)
-                if print_backtrace:
-                    traceback.print_tb(sys.exc_info()[2])
-            
-        elif apduregex.match(line):
-            ## Might be an APDU
-            apdu = binascii.a2b_hex("".join(line.split()))
-            try:
-                response = card.send_apdu(apdu)
-                print utils.hexdump(response)
-            except Exception:
-                exctype, value = sys.exc_info()[:2]
-                print "%s: %s" % (exctype, value)
-                if print_backtrace:
-                    traceback.print_tb(sys.exc_info()[2])
-            
-        else:
-            print "Unknown command"
+        apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
+        apdu = utils.APDU(apdu_binary)
+        response = card.send_apdu(apdu)
+        print utils.hexdump(response)
         
+    shell.fallback = do_raw_apdu
+    
+    def _print_sw():
         if card.sw_changed:
             print card.decode_statusword()
+    shell.register_post_hook(_print_sw)
+
+    shell.run()

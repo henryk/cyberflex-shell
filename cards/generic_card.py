@@ -41,21 +41,19 @@ class Card:
         result = self.send_apdu(apdu)
         return result == self.SW_OK
     
-    def cmd_verify(self, *args):
-        if len(args) != 2:
-            raise TypeError, "Must give exactly two arguments: pin number and pin"
-        pin_number = int(args[0], 0)
-        pin_value = binascii.a2b_hex("".join(args[1].split()))
+    def cmd_verify(self, pin_number, pin_value):
+        """Verify a PIN."""
+        pin_number = int(pin_number, 0)
+        pin_value = binascii.a2b_hex("".join(pin_value.split()))
         self.verify_pin(pin_number, pin_value)
     
-    def cmd_reset(self, *args):
+    def cmd_reset(self):
+        """Reset the card."""
         self.card.reconnect(init=pycsc.SCARD_RESET_CARD)
     
     COMMANDS = {
-        "reset": (cmd_reset, "reset",
-            """Reset the card."""),
-        "verify": (cmd_verify, "verify pin_number pin_value",
-            """Verify a PIN.""")
+        "reset": cmd_reset,
+        "verify": cmd_verify
     }
 
     def _check_apdu(apdu):

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.5.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2005-09-29, 05:37:58 -->
+<!-- Saved: 2005-10-10, 03:45:04 -->
 <!-- Copyright (C) 2005 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.5">
   <Description></Description>
@@ -33,6 +33,9 @@
     <Source>
       <Dir>cards</Dir>
       <Name>__init__.py</Name>
+    </Source>
+    <Source>
+      <Name>shell.py</Name>
     </Source>
   </Sources>
   <Forms>

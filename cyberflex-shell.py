@@ -36,9 +36,10 @@ if __name__ == "__main__":
         print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
     
     print "ATR:          %s" % utils.hexdump(newState[0]['Atr'], short = True)
-    card_class = cards.find_class(newState[0]['Atr'])
     
-    card = card_class()
+    pycsc_card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY)
+    card = cards.new_card_object(pycsc_card)
+    
     shell = Shell("cyberflex-shell")
     shell.register_commands(card, COMMANDS)
     shell.register_commands(card)

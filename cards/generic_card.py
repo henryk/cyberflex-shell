@@ -100,8 +100,9 @@ class Card:
         
         return result
     
-    def can_handle(cls, ATR):
-        """Determine whether this class can handle a card with that ATR."""
+    def can_handle(cls, card):
+        """Determine whether this class can handle a given pycsc object."""
+        ATR = card.status().get("ATR","")
         for (knownatr, mask) in cls.ATRS:
             if len(knownatr) != len(ATR):
                 continue

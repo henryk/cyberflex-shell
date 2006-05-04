@@ -164,7 +164,8 @@ class APDU:
         else:
             raise ValueError, "Invalid APDU, impossible"
         
-        for (kw, arg) in kwargs.items():
+        for (kw_orig, arg) in kwargs.items():
+            kw = kw_orig.lower()
             if kw == "cla":
                 self.cla = arg
             elif kw == "ins":
@@ -181,7 +182,7 @@ class APDU:
             elif kw == "content":
                 self.content = arg
             else:
-                raise TypeError, "Got an unexpected keyword argument '%s'" % kw
+                raise TypeError, "Got an unexpected keyword argument '%s'" % kw_orig
         
         if not lc_was_set:
             self.lc = len(self.content)

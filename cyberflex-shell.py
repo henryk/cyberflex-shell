@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import pycsc, utils, cards, os, re, binascii, sys, exceptions, traceback
+import pycsc, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt
 from shell import Shell
 print_backtrace = True
 
@@ -13,9 +13,40 @@ COMMANDS = {
     "atr": cmd_atr
 }
 
+def list_readers():
+    for index, name in enumerate(pycsc.listReader()):
+        print "%i: %s" % (index, name)
+
+
+OPTIONS = "r:l"
+LONG_OPTIONS = ["reader=", "list-readers"]
+reader = 0
+exit_now = False
+
 if __name__ == "__main__":
     
-    readerName = pycsc.listReader()[0]
+    (options, arguments) = getopt.gnu_getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
+    
+    for (option, value) in options:
+        if option in ("-r","--reader"):
+            if value.isdigit():
+                reader = int(value)
+            else:
+                reader = value
+        if option in ("-l","--list-readers"):
+            list_readers()
+            exit_now = True
+    
+    if exit_now:
+        sys.exit()
+    del exit_now
+    
+    if isinstance(reader, int):
+        readerName = pycsc.listReader()[reader]
+    else:
+        readerName = reader
+    del reader
+    
     newState = pycsc.getStatusChange(ReaderStates=[{'Reader': readerName, 'CurrentState':pycsc.SCARD_STATE_UNAWARE}])
     
     print "Cyberflex shell"
@@ -37,7 +68,7 @@ if __name__ == "__main__":
     
     print "ATR:          %s" % utils.hexdump(newState[0]['Atr'], short = True)
     
-    pycsc_card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY)
+    pycsc_card = pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
     card = cards.new_card_object(pycsc_card)
     
     shell = Shell("cyberflex-shell")

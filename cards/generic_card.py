@@ -24,9 +24,12 @@ class Card:
         '63C?': lambda SW1,SW2: "The counter has reached the value '%i'" % (SW2%16)
     }
 
-    def __init__(self, card = None):
+    def __init__(self, card = None, reader = None):
         if card is None:
-            self.card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY)
+            if reader is None:
+                self.card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY)
+            else:
+                self.card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY, reader = reader)
         else:
             self.card = card
         

@@ -142,27 +142,30 @@ class APDU:
         
         lc_was_set = False
         
-        if len(initbuff) == 4: ## ISO case 1
-            self.le = 0
-            self.lc = 0
-            self.content = list()
-        elif len(initbuff) == 5: ## ISO case 2
-            self.le = initbuff[self.OFFSET_LE]
-            self.lc = 0
-            self.content = list()
-        elif len(initbuff) > 5:
-            self.lc = initbuff[self.OFFSET_LC]
-            lc_was_set = True
-            if len(initbuff) == 5 + self.lc: ## ISO case 3
-                self.le = 0
-                self.content = initbuff[5:5+self.lc]
-            elif len(initbuff) == 5 + self.lc + 1: ## ISO case 4
-                self.le = initbuff[-1]
-                self.content = initbuff[5:5+self.lc]
-            else:
-                raise ValueError, "Invalid APDU, length(%i) != 4 + 1 + lc(%i) + 1" % (len(initbuff), self.lc)
-        else:
-            raise ValueError, "Invalid APDU, impossible"
+##        if len(initbuff) == 4: ## ISO case 1
+##            self.le = 0
+##            self.lc = 0
+##            self.content = list()
+##        elif len(initbuff) == 5: ## ISO case 2
+##            self.le = initbuff[self.OFFSET_LE]
+##            self.lc = 0
+##            self.content = list()
+##        elif len(initbuff) > 5:
+##            self.lc = initbuff[self.OFFSET_LC]
+##            lc_was_set = True
+##            if len(initbuff) == 5 + self.lc: ## ISO case 3
+##                self.le = 0
+##                self.content = initbuff[5:5+self.lc]
+##            elif len(initbuff) == 5 + self.lc + 1: ## ISO case 4
+##                self.le = initbuff[-1]
+##                self.content = initbuff[5:5+self.lc]
+##            else:
+##                raise ValueError, "Invalid APDU, length(%i) != 4 + 1 + lc(%i) + 1" % (len(initbuff), self.lc)
+##        else:
+##            raise ValueError, "Invalid APDU, impossible"
+        self.le = 0
+        self.lc = len(initbuff)-4
+        self.content = initbuff[4:]
         
         for (kw_orig, arg) in kwargs.items():
             kw = kw_orig.lower()
@@ -255,13 +258,16 @@ class APDU:
         else:
             self.__dict__[name] = value
     
-    def get_string(self):
+    def get_string(self, protocol=0):
         """Return the contents of this APDU as a binary string."""
         contents = [self.cla, self.ins, self.p1, self.p2]
-        if self.lc > 0:
-            contents.extend( [self.lc] + self.content)
-        if self.le > 0:
-            contents.append( self.le )
+        if protocol == 0:
+            if self.lc > 0:
+                contents.extend( [self.lc] + self.content)
+            if self.le > 0:
+                contents.append( self.le )
+        else:
+            contents.extend( self.content )
         return "".join([i is not None and chr(i) or "?" for i in contents])
 
 if __name__ == "__main__":

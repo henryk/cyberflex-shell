@@ -20,6 +20,7 @@ class Card:
     STATUS_WORDS = { 
         SW_OK: "Normal execution",
         '61??': "%(SW2)i (0x%(SW2)02x) bytes of response data can be retrieved with GetResponse.",
+        '6700': "Wrong length",
         '6C??': "Bad value for LE, 0x%(SW2)02x is the correct value.",
         '63C?': lambda SW1,SW2: "The counter has reached the value '%i'" % (SW2%16)
     }
@@ -60,6 +61,7 @@ class Card:
     }
 
     def _check_apdu(apdu):
+        return True
         if len(apdu) < 4 or ((len(apdu) > 5) and len(apdu) != (ord(apdu[4])+5)):
             print "Cowardly refusing to send invalid APDU:\n  ", utils.hexdump(apdu, indent=2)
             return False
@@ -81,7 +83,7 @@ class Card:
     
     def send_apdu(self, apdu):
         if isinstance(apdu, APDU):
-            apdu = apdu.get_string() ## FIXME
+            apdu = apdu.get_string(protocol = self.get_protocol()) ## FIXME
         if not Card._check_apdu(apdu):
             raise Exception, "Invalid APDU"
         if DEBUG:
@@ -92,7 +94,7 @@ class Card:
         
         result = self._real_send(apdu)
         
-        if result[0] == '\x61':
+        if len(result) == 2 and result[0] == '\x61':
             ## Need to call GetResponse
             gr_apdu = APDU(self.APDU_GET_RESPONSE, le = result[1]).get_string()
             result = self._real_send(gr_apdu)
@@ -136,3 +138,6 @@ class Card:
                                 ord(self.last_sw[1]) )
         
         return "Unknown SW: %s" % binascii.b2a_hex(self.last_sw)
+    
+    def get_protocol(self):
+        return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]

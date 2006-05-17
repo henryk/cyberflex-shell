@@ -122,22 +122,30 @@ class Card:
     def decode_statusword(self):
         if self.last_sw is None:
             return "No command executed so far"
-        else: 
+        else:
+            retval = None
+            
             desc = self.STATUS_WORDS.get(self.last_sw)
             if desc is not None:
-                return desc
+                retval = desc
             else:
                 target = binascii.b2a_hex(self.last_sw).upper()
                 for (key, value) in self.STATUS_WORDS.items():
                     if fnmatch.fnmatch(target, key):
                         if isinstance(value, str):
-                            return value % { "SW1": ord(self.last_sw[0]), 
+                            retval = value % { "SW1": ord(self.last_sw[0]), 
                                 "SW2": ord(self.last_sw[1]) }
+                            break
+                            
                         elif callable(value):
-                            return value( ord(self.last_sw[0]),
+                            retval = value( ord(self.last_sw[0]),
                                 ord(self.last_sw[1]) )
+                            break
         
-        return "Unknown SW: %s" % binascii.b2a_hex(self.last_sw)
+        if retval is None:
+            return "%s: Unknown SW" % binascii.b2a_hex(self.last_sw)
+        else:
+            return "%s: %s" % (binascii.b2a_hex(self.last_sw), retval)
     
     def get_protocol(self):
         return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]

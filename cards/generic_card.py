@@ -96,7 +96,7 @@ class Card:
         
         if len(result) == 2 and result[0] == '\x61':
             ## Need to call GetResponse
-            gr_apdu = APDU(self.APDU_GET_RESPONSE, le = result[1]).get_string()
+            gr_apdu = APDU(self.APDU_GET_RESPONSE, le = result[1]).get_string(protocol=0)
             result = self._real_send(gr_apdu)
         
         if DEBUG:

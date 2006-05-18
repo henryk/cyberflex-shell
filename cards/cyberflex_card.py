@@ -16,9 +16,9 @@ SECURE_CHANNEL_MACENC = 3
 MAC_LENGTH = 8
 
 class Cyberflex_Card(Java_Card):
-    APDU_INITIALIZE_UPDATE = APDU('\x80\x50\x00\x00\x00')
+    APDU_INITIALIZE_UPDATE = APDU('\x80\x50\x00\x00')
     APDU_EXTERNAL_AUTHENTICATE = APDU('\x84\x82\x00\x00')
-    APDU_GET_STATUS = APDU('\x84\xF2\x00\x00\x02\x4f\x00')
+    APDU_GET_STATUS = APDU('\x84\xF2\x00\x00\x4f\x00')
     APDU_DELETE = APDU('\x84\xe4\x00\x00')
     DRIVER_NAME = "Cyberflex"
     
@@ -67,6 +67,7 @@ class Cyberflex_Card(Java_Card):
         Is responsible for authenticating/encrypting commands when needed."""
         if apdu[0] == '\x84':
             ## Need security
+            
             if self.secure_channel_state == SECURE_CHANNEL_NONE:
                 raise Exception, "Need security but channel is not established"
             if self.secure_channel_state == SECURE_CHANNEL_CLEAR:

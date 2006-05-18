@@ -104,7 +104,9 @@ class APDU:
         form a valid APDU!
         
         The keyword arguments can then be used to override those values.
-        Keywords recognized are: cla, ins, p1, p2, lc, le, content."""
+        Keywords recognized are: cla, ins, p1, p2, lc, le, content.
+        
+        If protocol is set to 0 then the APDU will be parsed as a T=0 APDU."""
         
         initbuff = list()
         
@@ -142,30 +144,32 @@ class APDU:
         
         lc_was_set = False
         
-##        if len(initbuff) == 4: ## ISO case 1
-##            self.le = 0
-##            self.lc = 0
-##            self.content = list()
-##        elif len(initbuff) == 5: ## ISO case 2
-##            self.le = initbuff[self.OFFSET_LE]
-##            self.lc = 0
-##            self.content = list()
-##        elif len(initbuff) > 5:
-##            self.lc = initbuff[self.OFFSET_LC]
-##            lc_was_set = True
-##            if len(initbuff) == 5 + self.lc: ## ISO case 3
-##                self.le = 0
-##                self.content = initbuff[5:5+self.lc]
-##            elif len(initbuff) == 5 + self.lc + 1: ## ISO case 4
-##                self.le = initbuff[-1]
-##                self.content = initbuff[5:5+self.lc]
-##            else:
-##                raise ValueError, "Invalid APDU, length(%i) != 4 + 1 + lc(%i) + 1" % (len(initbuff), self.lc)
-##        else:
-##            raise ValueError, "Invalid APDU, impossible"
-        self.le = 0
-        self.lc = len(initbuff)-4
-        self.content = initbuff[4:]
+        if kwargs.get("protocol", None) == 0:
+            if len(initbuff) == 4: ## ISO case 1
+                self.le = 0
+                self.lc = 0
+                self.content = list()
+            elif len(initbuff) == 5: ## ISO case 2
+                self.le = initbuff[self.OFFSET_LE]
+                self.lc = 0
+                self.content = list()
+            elif len(initbuff) > 5:
+                self.lc = initbuff[self.OFFSET_LC]
+                lc_was_set = True
+                if len(initbuff) == 5 + self.lc: ## ISO case 3
+                    self.le = 0
+                    self.content = initbuff[5:5+self.lc]
+                elif len(initbuff) == 5 + self.lc + 1: ## ISO case 4
+                    self.le = initbuff[-1]
+                    self.content = initbuff[5:5+self.lc]
+                else:
+                    raise ValueError, "Invalid APDU, length(%i) != 4 + 1 + lc(%i) + 1" % (len(initbuff), self.lc)
+            else:
+                raise ValueError, "Invalid APDU, impossible"
+        else:
+            self.le = 0
+            self.lc = len(initbuff)-4
+            self.content = initbuff[4:]
         
         for (kw_orig, arg) in kwargs.items():
             kw = kw_orig.lower()
@@ -258,8 +262,9 @@ class APDU:
         else:
             self.__dict__[name] = value
     
-    def get_string(self, protocol=0):
-        """Return the contents of this APDU as a binary string."""
+    def get_string(self, protocol=None):
+        """Return the contents of this APDU as a binary string.
+        If protocol is set to 0 then the APDU will be rendered as a T=0 APDU."""
         contents = [self.cla, self.ins, self.p1, self.p2]
         if protocol == 0:
             if self.lc > 0:
@@ -269,7 +274,11 @@ class APDU:
         else:
             contents.extend( self.content )
         return "".join([i is not None and chr(i) or "?" for i in contents])
-
+    
+    def append_content(self, string):
+        self.content = self.content + string
+        self.lc = len(self.content)
+    
 if __name__ == "__main__":
     response = """
 0000:  07 A0 00 00 00 03 00 00 07 00 07 A0 00 00 00 62  ...............b

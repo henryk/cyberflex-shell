@@ -94,7 +94,7 @@ if __name__ == "__main__":
         response = card.send_apdu(apdu)
         
         if len(response) > 2: ## The SW is already printed by _print_sw as a post_hook
-            print utils.hexdump(response[:-2]), "\n"
+            print utils.hexdump(response[:-2])
         
     shell.fallback = do_raw_apdu
     

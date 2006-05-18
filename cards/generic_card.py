@@ -143,9 +143,9 @@ class Card:
                             break
         
         if retval is None:
-            return "%s: Unknown SW" % binascii.b2a_hex(self.last_sw)
+            return "Unknown SW (SW %s)" % binascii.b2a_hex(self.last_sw)
         else:
-            return "%s: %s" % (binascii.b2a_hex(self.last_sw), retval)
+            return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
     
     def get_protocol(self):
         return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]

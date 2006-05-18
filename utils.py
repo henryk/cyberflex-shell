@@ -85,8 +85,139 @@ def _unformat_hexdump(dump):
     hexdump = " ".join([line[7:54] for line in dump.splitlines()])
     return binascii.a2b_hex("".join([e != " " and e or "" for e in hexdump]))
 
-
 class APDU:
+    "Base class for an APDU"
+    
+    def __init__(self, *args, **kwargs):
+        """Creates a new APDU instance. Can be given positional parameters which 
+        must be sequences of either strings (or strings themselves) or integers
+        specifying byte values that will be concatenated in order. Alternatively
+        you may give exactly one positional argument that is an APDU instance.
+        After all the positional arguments have been concatenated they must
+        form a valid APDU!
+        
+        The keyword arguments can then be used to override those values.
+        Keywords recognized are: 
+            C_APDU: cla, ins, p1, p2, lc, le, data
+            R_APDU: sw, sw1, sw2, data
+        """
+        
+        initbuff = list()
+        
+        if len(args) == 1 and isinstance(args[0], self.__class__):
+            self.parse( args[0].render() )
+        else:
+            for arg in args:
+                if type(arg) == str:
+                    initbuff.extend(arg)
+                elif hasattr(arg, "__iter__"):
+                    for elem in arg:
+                        if hasattr(elem, "__iter__"):
+                            initbuff.extend(elem)
+                        else:
+                            initbuff.append(elem)
+                else:
+                    initbuff.append(arg)
+            
+            for (index, value) in enumerate(initbuff):
+                t = type(value)
+                if t == str:
+                    initbuff[i] = ord(value)
+                elif t != int:
+                    raise TypeError, "APDU must consist of ints or one-byte strings, not %s (index %s)" % (t, index)
+            
+            self.parse( initbuff )
+        
+        for (name, value) in kwargs.items():
+            print "setting %r=%r" % (name, value)
+            setattr(self, name, value)
+            print "is now %r" % getattr(self, name)
+        print "cla=%r" % self.cla
+    
+    def _getdata(self):
+        return self._data
+    def _setdata(self, value): 
+        if isinstance(value, str):
+            self._data = [ord(e) for e in value]
+        elif isinstance(value, list):
+            self._data = [int(e) for e in value]
+        else:
+            raise ValueError, "'data' attribute can only be a str or a list of int, not %s" % type(value)
+    def _deldata(self):
+        del self._data; self.data = ""
+    
+    data = property(_getdata, _setdata, None,
+        "The data contents of this APDU")
+    
+    def _setbyte(self, name, value):
+        print "setbyte(%r, %r)" % (name, value)
+        if isinstance(value, int):
+            setattr(self, "_"+name, value)
+        elif isinstance(value, str):
+            setattr(self, "_"+name, ord(value))
+        else:
+            raise ValueError, "'%s' attribute can only be a byte, that is: int or str, not %s" % (namelower, type(value))
+    
+def _make_byte_properties(obj, props):
+    "Generates properties for all names in props and their lowercase equivalents"
+    ## This is because I was too lazy to type it all out. Ignore it if you don't know what it's good for
+    for v in props:
+        setattr(obj, v, 
+            property(lambda self: getattr(self, "_"+v, 0),
+                lambda self: self._setbyte(v, value), None,
+                "The %s attribute of the APDU" % v)
+        )
+        setattr(obj, v.lower(), 
+            property(lambda self: getattr(self, "_"+v, 0),
+                lambda self: self._setbyte(v, value), None,
+                "The %s attribute of the APDU" % v)
+        )
+
+class C_APDU(APDU):
+    "Class for a command APDU"
+    
+    def parse(self, apdu):
+        "Parse a full command APDU and assign the values to our object, overwriting whatever there was."
+        print "parse(%r)" % apdu
+
+_make_byte_properties(C_APDU, ("CLA", "INS", "P1", "P2", "Lc", "Le") )
+
+class R_APDU(APDU):
+    "Class for a response APDU"
+    
+    def _getsw(self):        return chr(self._sw1) + chr(self._sw2)
+    def _setsw(self, value):
+        if len(value) != 2:
+            raise ValueError, "SW must be exactly two bytes"
+        self.sw1 = value[0]
+        self.sw2 = value[1]
+    
+    SW = property(_getsw, _setsw, None,
+        "The Status Word of this response APDU")
+    sw = SW
+    
+    def parse(self, apdu):
+        "Parse a full response APDU and assign the values to our object, overwriting whatever there was."
+        self.sw = apdu[-2:]
+        self.data = apdu[:-2]
+
+_make_byte_properties(C_APDU, ("SW1", "SW2") )
+
+class TPDU:
+    "Base class for TPDUs"
+    
+    def __init__(self, apdu):
+        self.apdu = apdu
+    
+class TPDU_T0(TPDU):
+    "Class for a T=0 TPDU"
+    protocol = 0
+
+class TPDU_T1(TPDU):
+    "Class for T=1 TPDU"
+    protocol = 1
+
+class APDU_old:
     """Class for an APDU.."""
     OFFSET_CLA = 0
     OFFSET_INS = 1
@@ -330,6 +461,10 @@ if __name__ == "__main__":
     #response = sys.stdin.read()
     #parse_status(_unformat_hexdump(response)[:-2])
     
-    print APDU((1,2,3), cla=0x23, content="hallo")
-    print APDU(1,2,3,4,2,4,6)
+    print C_APDU((1,2,3), cla=0x23, data="hallo")
+    print C_APDU(1,2,3,4,2,4,6)
+    
+    c = C_APDU()
+    c.cla = 'a'
+    print "\n",c.cla
     

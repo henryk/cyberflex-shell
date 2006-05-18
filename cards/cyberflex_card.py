@@ -18,7 +18,7 @@ MAC_LENGTH = 8
 class Cyberflex_Card(Java_Card):
     APDU_INITIALIZE_UPDATE = C_APDU('\x80\x50\x00\x00')
     APDU_EXTERNAL_AUTHENTICATE = C_APDU('\x84\x82\x00\x00')
-    APDU_GET_STATUS = C_APDU('\x84\xF2\x00\x00\x4f') ## TODO: C_APDU('\x84\xF2\x00\x00\x4f\x00') ?
+    APDU_GET_STATUS = C_APDU('\x84\xF2\x00\x00\x02\x4f\x00')
     APDU_DELETE = C_APDU('\x84\xe4\x00\x00')
     DRIVER_NAME = "Cyberflex"
     
@@ -65,7 +65,7 @@ class Cyberflex_Card(Java_Card):
     def before_send(self, apdu):
         """Will be called by send_apdu before sending a command APDU.
         Is responsible for authenticating/encrypting commands when needed."""
-        if apdu.cla == '\x84':
+        if apdu.cla == 0x84:
             ## Need security
             
             if self.secure_channel_state == SECURE_CHANNEL_NONE:

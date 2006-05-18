@@ -88,7 +88,7 @@ class Card:
         
         if result.sw1 == 0x61:
             ## Need to call GetResponse
-            gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result[1]).render() # FIXME
+            gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result.sw2) # FIXME
             result = R_APDU(self._real_send(gr_apdu))
         
         if DEBUG:

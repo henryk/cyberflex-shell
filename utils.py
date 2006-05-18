@@ -155,7 +155,7 @@ class APDU(object):
         "The data contents of this APDU")
     
     def _setbyte(self, name, value):
-        print "setbyte(%r, %r)" % (name, value)
+        #print "setbyte(%r, %r)" % (name, value)
         if isinstance(value, int):
             setattr(self, "_"+name, value)
         elif isinstance(value, str):

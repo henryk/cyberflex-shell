@@ -85,7 +85,13 @@ def _unformat_hexdump(dump):
     hexdump = " ".join([line[7:54] for line in dump.splitlines()])
     return binascii.a2b_hex("".join([e != " " and e or "" for e in hexdump]))
 
-class APDU:
+def _make_byte_property(prop):
+    "Make a byte property(). This is meta code."
+    return property(lambda self: getattr(self, "_"+prop, 3),
+            lambda self, value: self._setbyte(prop, value), None,
+            "The %s attribute of the APDU" % prop)
+
+class APDU(object):
     "Base class for an APDU"
     
     def __init__(self, *args, **kwargs):
@@ -129,10 +135,7 @@ class APDU:
             self.parse( initbuff )
         
         for (name, value) in kwargs.items():
-            print "setting %r=%r" % (name, value)
             setattr(self, name, value)
-            print "is now %r" % getattr(self, name)
-        print "cla=%r" % self.cla
     
     def _getdata(self):
         return self._data
@@ -143,6 +146,7 @@ class APDU:
             self._data = [int(e) for e in value]
         else:
             raise ValueError, "'data' attribute can only be a str or a list of int, not %s" % type(value)
+        self.Lc = len(value)
     def _deldata(self):
         del self._data; self.data = ""
     
@@ -157,51 +161,50 @@ class APDU:
             setattr(self, "_"+name, ord(value))
         else:
             raise ValueError, "'%s' attribute can only be a byte, that is: int or str, not %s" % (namelower, type(value))
-    
-def _make_byte_properties(obj, props):
-    "Generates properties for all names in props and their lowercase equivalents"
-    ## This is because I was too lazy to type it all out. Ignore it if you don't know what it's good for
-    for v in props:
-        setattr(obj, v, 
-            property(lambda self: getattr(self, "_"+v, 0),
-                lambda self: self._setbyte(v, value), None,
-                "The %s attribute of the APDU" % v)
-        )
-        setattr(obj, v.lower(), 
-            property(lambda self: getattr(self, "_"+v, 0),
-                lambda self: self._setbyte(v, value), None,
-                "The %s attribute of the APDU" % v)
-        )
 
 class C_APDU(APDU):
     "Class for a command APDU"
     
     def parse(self, apdu):
         "Parse a full command APDU and assign the values to our object, overwriting whatever there was."
-        print "parse(%r)" % apdu
-
-_make_byte_properties(C_APDU, ("CLA", "INS", "P1", "P2", "Lc", "Le") )
+        
+        apdu = map( lambda a: (isinstance(a, str) and (ord(a),) or (a,))[0], apdu)
+        apdu = apdu + [0] * max(6-len(apdu), 0)
+        
+        self.CLA, self.INS, self.P1, self.P2, self.Lc = apdu[:5]
+        self.Le = apdu[-1]
+        
+        assert len(apdu) == 6 + self.Lc, "Incorrect Lc value: is %s, should be %s" % (self.Lc, len(apdu)-6)
+        self.data = apdu[5:-1]
+    
+    CLA = _make_byte_property("CLA"); cla = CLA
+    INS = _make_byte_property("INS"); ins = INS
+    P1 = _make_byte_property("P1");   p1 = P1
+    P2 = _make_byte_property("P2");   p2 = P2
+    Lc = _make_byte_property("Lc");   lc = Lc
+    Le = _make_byte_property("Le");   le = Le
 
 class R_APDU(APDU):
     "Class for a response APDU"
     
-    def _getsw(self):        return chr(self._sw1) + chr(self._sw2)
+    def _getsw(self):        return chr(self.SW1) + chr(self.SW2)
     def _setsw(self, value):
         if len(value) != 2:
             raise ValueError, "SW must be exactly two bytes"
-        self.sw1 = value[0]
-        self.sw2 = value[1]
+        self.SW1 = value[0]
+        self.SW2 = value[1]
     
     SW = property(_getsw, _setsw, None,
         "The Status Word of this response APDU")
     sw = SW
     
+    SW1 = _make_byte_property("SW1"); sw1 = SW1
+    SW2 = _make_byte_property("SW2"); sw2 = SW2
+    
     def parse(self, apdu):
         "Parse a full response APDU and assign the values to our object, overwriting whatever there was."
-        self.sw = apdu[-2:]
+        self.SW = apdu[-2:]
         self.data = apdu[:-2]
-
-_make_byte_properties(C_APDU, ("SW1", "SW2") )
 
 class TPDU:
     "Base class for TPDUs"
@@ -462,9 +465,6 @@ if __name__ == "__main__":
     #parse_status(_unformat_hexdump(response)[:-2])
     
     print C_APDU((1,2,3), cla=0x23, data="hallo")
-    print C_APDU(1,2,3,4,2,4,6)
+    print C_APDU(1,2,3,4,2,4,6,0)
     
-    c = C_APDU()
-    c.cla = 'a'
-    print "\n",c.cla
     

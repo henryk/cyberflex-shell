@@ -87,8 +87,9 @@ def _unformat_hexdump(dump):
 
 def _make_byte_property(prop):
     "Make a byte property(). This is meta code."
-    return property(lambda self: getattr(self, "_"+prop, 3),
-            lambda self, value: self._setbyte(prop, value), None,
+    return property(lambda self: getattr(self, "_"+prop, 0),
+            lambda self, value: self._setbyte(prop, value), 
+            lambda self: delattr(self, "_"+prop),
             "The %s attribute of the APDU" % prop)
 
 class APDU(object):
@@ -128,7 +129,7 @@ class APDU(object):
             for (index, value) in enumerate(initbuff):
                 t = type(value)
                 if t == str:
-                    initbuff[i] = ord(value)
+                    initbuff[index] = ord(value)
                 elif t != int:
                     raise TypeError, "APDU must consist of ints or one-byte strings, not %s (index %s)" % (t, index)
             
@@ -141,9 +142,9 @@ class APDU(object):
         return self._data
     def _setdata(self, value): 
         if isinstance(value, str):
-            self._data = [ord(e) for e in value]
+            self._data = "".join([e for e in value])
         elif isinstance(value, list):
-            self._data = [int(e) for e in value]
+            self._data = "".join([chr(int(e)) for e in value])
         else:
             raise ValueError, "'data' attribute can only be a str or a list of int, not %s" % type(value)
         self.Lc = len(value)
@@ -162,6 +163,34 @@ class APDU(object):
         else:
             raise ValueError, "'%s' attribute can only be a byte, that is: int or str, not %s" % (namelower, type(value))
 
+    def _format_parts(self, fields):
+        "utility function to be used in __str__ and __repr__"
+        
+        parts = []
+        for i in fields:
+            parts.append( "%s=0x%02X" % (i, getattr(self, i)) )
+        
+        return parts
+    
+    def __str__(self):
+        result = "%s(%s)" % (self.__class__.__name__, ", ".join(self._format_fields()))
+        
+        if len(self.data) > 0:
+            result = result + " with %i (0x%02x) bytes of data" % (
+                len(self.data), len(self.data) 
+            )
+            return result + ":\n" + hexdump(self.data)
+        else:
+            return result
+    
+    def __repr__(self):
+        parts = self._format_fields()
+        
+        if len(self.data) > 0:
+            parts.append("data=%r" % self.data)
+        
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(parts))
+
 class C_APDU(APDU):
     "Class for a command APDU"
     
@@ -169,13 +198,24 @@ class C_APDU(APDU):
         "Parse a full command APDU and assign the values to our object, overwriting whatever there was."
         
         apdu = map( lambda a: (isinstance(a, str) and (ord(a),) or (a,))[0], apdu)
-        apdu = apdu + [0] * max(6-len(apdu), 0)
+        apdu = apdu + [0] * max(4-len(apdu), 0)
         
-        self.CLA, self.INS, self.P1, self.P2, self.Lc = apdu[:5]
-        self.Le = apdu[-1]
-        
-        assert len(apdu) == 6 + self.Lc, "Incorrect Lc value: is %s, should be %s" % (self.Lc, len(apdu)-6)
-        self.data = apdu[5:-1]
+        self.CLA, self.INS, self.P1, self.P2 = apdu[:4] # case 1, 2, 3, 4
+        if len(apdu) == 5:                              # case 2
+            self.Le = apdu[-1]
+            self.data = ""
+        elif len(apdu) > 5:                             # case 3, 4
+            self.Lc = apdu[4]
+            if len(apdu) == 5 + self.Lc:                # case 3
+                self.data = apdu[5:]
+            elif len(apdu) == 5 + self.Lc + 1:          # case 4
+                self.data = apdu[5:-1]
+                self.Le = apdu[-1]
+            else:
+                raise ValueError, "Invalid Lc value. Is %s, should be %s or %s" % (self.Lc,
+                    5 + self.Lc, 5 + self.Lc + 1)
+        else:                                           # case 1
+            self.data = ""
     
     CLA = _make_byte_property("CLA"); cla = CLA
     INS = _make_byte_property("INS"); ins = INS
@@ -183,6 +223,17 @@ class C_APDU(APDU):
     P2 = _make_byte_property("P2");   p2 = P2
     Lc = _make_byte_property("Lc");   lc = Lc
     Le = _make_byte_property("Le");   le = Le
+    
+    def _format_fields(self):
+        fields = ["CLA", "INS", "P1", "P2"]
+        if self.Lc > 0:
+            fields.append("Lc")
+        if hasattr(self, "_Le"): ## There's a difference between "Le = 0" and "no Le"
+            fields.append("Le")
+        
+        return self._format_parts(fields)
+    
+
 
 class R_APDU(APDU):
     "Class for a response APDU"
@@ -205,6 +256,11 @@ class R_APDU(APDU):
         "Parse a full response APDU and assign the values to our object, overwriting whatever there was."
         self.SW = apdu[-2:]
         self.data = apdu[:-2]
+    
+    def _format_fields(self):
+        fields = ["SW1", "SW2"]
+        return self._format_parts(fields)
+    
 
 class TPDU:
     "Base class for TPDUs"
@@ -464,7 +520,29 @@ if __name__ == "__main__":
     #response = sys.stdin.read()
     #parse_status(_unformat_hexdump(response)[:-2])
     
-    print C_APDU((1,2,3), cla=0x23, data="hallo")
-    print C_APDU(1,2,3,4,2,4,6,0)
+    a = C_APDU(1,2,3,4) # case 1
+    b = C_APDU(1,2,3,4,5) # case 2
+    c = C_APDU((1,2,3), cla=0x23, data="hallo") # case 3
+    d = C_APDU(1,2,3,4,2,4,6,0) # case 4
     
+    print
+    print a
+    print b
+    print c
+    print d
+    print
+    print repr(a)
+    print repr(b)
+    print repr(c)
+    print repr(d)
     
+    print
+    e = R_APDU(0x90,0)
+    f = R_APDU("foo\x67\x00")
+
+    print
+    print e
+    print f
+    print
+    print repr(e)
+    print repr(f)

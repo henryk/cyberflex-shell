@@ -90,11 +90,11 @@ if __name__ == "__main__":
             raise NotImplementedError
         
         apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
-        apdu = utils.APDU(apdu_binary)
+        apdu = utils.C_APDU(apdu_binary)
         response = card.send_apdu(apdu)
         
-        if len(response) > 2: ## The SW is already printed by _print_sw as a post_hook
-            print utils.hexdump(response[:-2])
+        if len(response.data) > 0: ## The SW is already printed by _print_sw as a post_hook
+            print utils.hexdump(response.data)
         
     shell.fallback = do_raw_apdu
     

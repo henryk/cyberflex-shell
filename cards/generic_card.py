@@ -1,12 +1,12 @@
 import crypto_utils, utils, pycsc, binascii, fnmatch
-from utils import APDU
+from utils import C_APDU, R_APDU
 
 DEBUG = True
 #DEBUG = False
 
 class Card:
-    APDU_GET_RESPONSE = APDU("\x00\xC0\x00\x00")
-    APDU_VERIFY_PIN = APDU("\x00\x20\x00\x00")
+    APDU_GET_RESPONSE = C_APDU("\x00\xC0\x00\x00")
+    APDU_VERIFY_PIN = C_APDU("\x00\x20\x00\x00")
     SW_OK = '\x90\x00'
     ATRS = []
     DRIVER_NAME = "Generic"
@@ -40,10 +40,10 @@ class Card:
         self.sw_changed = False
     
     def verify_pin(self, pin_number, pin_value):
-        apdu = APDU(self.APDU_VERIFY_PIN, P2 = pin_number,
-            content = pin_value)
+        apdu = C_APDU(self.APDU_VERIFY_PIN, P2 = pin_number,
+            data = pin_value)
         result = self.send_apdu(apdu)
-        return result == self.SW_OK
+        return result.sw == self.SW_OK
     
     def cmd_verify(self, pin_number, pin_value):
         """Verify a PIN."""
@@ -60,32 +60,24 @@ class Card:
         "verify": cmd_verify
     }
 
-    def _check_apdu(apdu):
-        return True
-        if len(apdu) < 4 or ((len(apdu) > 5) and len(apdu) != (ord(apdu[4])+5)):
-            print "Cowardly refusing to send invalid APDU:\n  ", utils.hexdump(apdu, indent=2)
-            return False
-        return True
-    _check_apdu = staticmethod(_check_apdu)
-    
     def _real_send(self, apdu):
-        if not Card._check_apdu(apdu):
-            raise Exception, "Invalid APDU"
+        apdu_binary = apdu.render()
+        
         if DEBUG:
-            print ">> " + utils.hexdump(apdu, indent = 3)
-        result = self.card.transmit(apdu)
+            print ">> " + utils.hexdump(apdu_binary, indent = 3)
+        
+        result_binary = self.card.transmit(apdu_binary)
+        result = R_APDU(result_binary)
+        
         self.last_apdu = apdu
-        self.last_sw = result[-2:]
+        self.last_sw = result.sw
         self.sw_changed = True
+        
         if DEBUG:
-            print "<< " + utils.hexdump(result, indent = 3)
+            print "<< " + utils.hexdump(result_binary, indent = 3)
         return result
     
     def send_apdu(self, apdu):
-        if isinstance(apdu, APDU):
-            apdu = apdu.get_string(protocol = self.get_protocol()) ## FIXME
-        if not Card._check_apdu(apdu):
-            raise Exception, "Invalid APDU"
         if DEBUG:
             print "%s\nBeginning transaction %i" % ('-'*80, self._i)
         
@@ -94,10 +86,10 @@ class Card:
         
         result = self._real_send(apdu)
         
-        if len(result) == 2 and result[0] == '\x61':
+        if result.sw1 == 0x61:
             ## Need to call GetResponse
-            gr_apdu = APDU(self.APDU_GET_RESPONSE, le = result[1]).get_string(protocol=0)
-            result = self._real_send(gr_apdu)
+            gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result[1]).render() # FIXME
+            result = R_APDU(self._real_send(gr_apdu))
         
         if DEBUG:
             print "Ending transaction %i\n%s\n" % (self._i, '-'*80)

@@ -1,9 +1,9 @@
 import utils, binascii
 from generic_card import *
-from utils import APDU
+from utils import C_APDU
 
 class Java_Card(Card):
-    APDU_SELECT_APPLICATION = APDU("\x00\xa4\x04\x00")
+    APDU_SELECT_APPLICATION = C_APDU("\x00\xa4\x04\x00")
     DRIVER_NAME = "Generic Java"
     APPLICATIONS = {
         "muscle": "\xa0\x00\x00\x00\x01\x01"
@@ -14,8 +14,8 @@ class Java_Card(Card):
 
     def select_application(self, aid):
         result = self.send_apdu(
-            APDU(self.APDU_SELECT_APPLICATION,
-            content = aid) )
+            C_APDU(self.APDU_SELECT_APPLICATION,
+            data = aid) )
         return result
     
     def cmd_selectapplication(self, application):
@@ -27,8 +27,8 @@ class Java_Card(Card):
         else:
             aid = binascii.a2b_hex("".join(application.split()))
         result = self.select_application(aid)
-        if len(result) > 2:
-            print utils.hexdump(result[:-2])
+        if len(result.data) > 0:
+            print utils.hexdump(result.data)
     
     COMMANDS = dict(Card.COMMANDS)
     COMMANDS.update( {

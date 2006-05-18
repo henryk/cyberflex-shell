@@ -248,6 +248,19 @@ class C_APDU(APDU):
             buffer.append(chr(self.Le))
         
         return "".join(buffer)
+    
+    def case(self):
+        "Return 1, 2, 3 or 4, depending on which ISO case we represent."
+        if self.Lc == 0:
+            if not hasattr(self, "_Le"):
+                return 1
+            else:
+                return 2
+        else:
+            if not hasattr(self, "_Le"):
+                return 3
+            else:
+                return 4
 
 class R_APDU(APDU):
     "Class for a response APDU"

@@ -16,10 +16,10 @@ SECURE_CHANNEL_MACENC = 3
 MAC_LENGTH = 8
 
 class Cyberflex_Card(Java_Card):
-    APDU_INITIALIZE_UPDATE = APDU('\x80\x50\x00\x00')
-    APDU_EXTERNAL_AUTHENTICATE = APDU('\x84\x82\x00\x00')
-    APDU_GET_STATUS = APDU('\x84\xF2\x00\x00\x4f\x00')
-    APDU_DELETE = APDU('\x84\xe4\x00\x00')
+    APDU_INITIALIZE_UPDATE = C_APDU('\x80\x50\x00\x00')
+    APDU_EXTERNAL_AUTHENTICATE = C_APDU('\x84\x82\x00\x00')
+    APDU_GET_STATUS = C_APDU('\x84\xF2\x00\x00\x4f') ## TODO: C_APDU('\x84\xF2\x00\x00\x4f\x00') ?
+    APDU_DELETE = C_APDU('\x84\xe4\x00\x00')
     DRIVER_NAME = "Cyberflex"
     
     ATRS = [ 
@@ -65,7 +65,7 @@ class Cyberflex_Card(Java_Card):
     def before_send(self, apdu):
         """Will be called by send_apdu before sending a command APDU.
         Is responsible for authenticating/encrypting commands when needed."""
-        if apdu[0] == '\x84':
+        if apdu.cla == '\x84':
             ## Need security
             
             if self.secure_channel_state == SECURE_CHANNEL_NONE:
@@ -73,16 +73,11 @@ class Cyberflex_Card(Java_Card):
             if self.secure_channel_state == SECURE_CHANNEL_CLEAR:
                 return apdu
             elif self.secure_channel_state == SECURE_CHANNEL_MAC:
-                if len(apdu) < 4:
-                    raise Exception, "Malformed APDU"
-                elif len(apdu) == 4:
-                    apdu = apdu + chr(MAC_LENGTH)
-                else:
-                    apdu = apdu[:4] + chr( ord(apdu[4]) + MAC_LENGTH ) + apdu[5:]
+                apdu.lc = apdu.lc + MAC_LENGTH
                 
-                mac = crypto_utils.calculate_MAC(self.session_key_mac, apdu, self.last_mac)
+                mac = crypto_utils.calculate_MAC(self.session_key_mac, apdu.render(), self.last_mac)
                 self.last_mac = mac
-                apdu = apdu + mac
+                apdu.data = apdu.data + mac
             elif self.secure_channel_state == SECURE_CHANNEL_MACENC:
                 raise Exception, "MAC+Enc Not implemented yet"
         return apdu
@@ -112,9 +107,9 @@ class Cyberflex_Card(Java_Card):
         
         host_challenge = crypto_utils.generate_host_challenge()
         
-        apdu = APDU(self.APDU_INITIALIZE_UPDATE,
+        apdu = C_APDU(self.APDU_INITIALIZE_UPDATE,
             p1 = keyset_version, p2 = key_index,
-            content = host_challenge)
+            data = host_challenge)
         
         self.secure_channel_state = SECURE_CHANNEL_NONE
         self.last_mac = '\x00' * 8
@@ -122,11 +117,11 @@ class Cyberflex_Card(Java_Card):
         self.session_key_mac = None
         
         result = self.send_apdu(apdu)
-        if result[-2:] != self.SW_OK:
+        if result.sw != self.SW_OK:
             raise Exception, "Statusword after InitializeUpdate was %s. Warning: No successful ExternalAuthenticate; keyset might be locked soon" % binascii.b2a_hex(result[-2:])
         
-        card_challenge = result[12:20]
-        card_cryptogram = result[20:28]
+        card_challenge = result.data[12:20]
+        card_cryptogram = result.data[20:28]
         
         self.session_key_enc = crypto_utils.get_session_key(
             self.keyset[KEY_AUTH], host_challenge, card_challenge)
@@ -140,15 +135,15 @@ class Cyberflex_Card(Java_Card):
         host_cryptogram = crypto_utils.calculate_host_cryptogram(
             self.session_key_enc, card_challenge, host_challenge)
         
-        apdu = APDU(self.APDU_EXTERNAL_AUTHENTICATE,
+        apdu = C_APDU(self.APDU_EXTERNAL_AUTHENTICATE,
             p1 = security_level, p2 = 0,
-            content = host_cryptogram)
+            data = host_cryptogram)
             
         self.secure_channel_state = SECURE_CHANNEL_MAC
         result = self.send_apdu(apdu)
         self.secure_channel_state = security_level
         
-        if result[-2:] != self.SW_OK:
+        if result.sw != self.SW_OK:
             self.secure_channel_state = SECURE_CHANNEL_NONE
             raise Exception, "Statusword after ExternalAuthenticate was %s. Warning: No successful ExternalAuthenticate; keyset might be locked soon" % binascii.b2a_hex(result[-2:])
         
@@ -174,7 +169,7 @@ class Cyberflex_Card(Java_Card):
         Returns: the response APDU which can be parsed with 
         utils.parse_status()"""
         return self.send_apdu(
-            APDU(self.APDU_GET_STATUS,
+            C_APDU(self.APDU_GET_STATUS,
                 p1 = reference_control)
             )
     
@@ -183,11 +178,11 @@ class Cyberflex_Card(Java_Card):
             print "Cowardly refusing to delete the card manager."
             raise ValueError, "Undeletable object"
         tlvaid = chr(0x4f) + chr(len(aid)) + aid
-        apdu = APDU(self.APDU_DELETE,
-            content = tlvaid)
+        apdu = C_APDU(self.APDU_DELETE,
+            data = tlvaid)
         result = self.send_apdu(apdu)
         
-        return result[0] == 0x0
+        return result.data[0] == 0x0
     
     def cmd_delete(self, aid):
         """Delete the object identified by aid."""
@@ -198,7 +193,7 @@ class Cyberflex_Card(Java_Card):
         """Execute a GetStatus command and return the result."""
         reference_control = int(reference_control, 0)
         result = self.get_status(reference_control)
-        utils.parse_status(result[:-2])
+        utils.parse_status(result.data)
     
     def cmd_secure(self, keyset_version=None, key_index=None, security_level=None):
         """Open a secure channel. 

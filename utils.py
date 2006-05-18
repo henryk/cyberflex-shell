@@ -292,21 +292,6 @@ class R_APDU(APDU):
         "Return this APDU as a binary string"
         return self.data + self.sw
     
-
-class TPDU:
-    "Base class for TPDUs"
-    
-    def __init__(self, apdu):
-        self.apdu = apdu
-    
-class TPDU_T0(TPDU):
-    "Class for a T=0 TPDU"
-    protocol = 0
-
-class TPDU_T1(TPDU):
-    "Class for T=1 TPDU"
-    protocol = 1
-    
 if __name__ == "__main__":
     response = """
 0000:  07 A0 00 00 00 03 00 00 07 00 07 A0 00 00 00 62  ...............b

@@ -20,7 +20,6 @@ class Card:
     STATUS_WORDS = { 
         SW_OK: "Normal execution",
         '61??': "%(SW2)i (0x%(SW2)02x) bytes of response data can be retrieved with GetResponse.",
-        '6700': "Wrong length",
         '6C??': "Bad value for LE, 0x%(SW2)02x is the correct value.",
         '63C?': lambda SW1,SW2: "The counter has reached the value '%i'" % (SW2%16)
     }
@@ -37,6 +36,7 @@ class Card:
         self._i = 0
         self.last_apdu = None
         self.last_sw = None
+        self.last_result = None
         self.sw_changed = False
     
     def verify_pin(self, pin_number, pin_value):
@@ -95,6 +95,7 @@ class Card:
             print "Ending transaction %i\n%s\n" % (self._i, '-'*80)
         self._i = self._i + 1
         
+        self.last_result = result
         return result
     
     def can_handle(cls, card):

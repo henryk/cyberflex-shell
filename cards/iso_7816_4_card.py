@@ -30,7 +30,7 @@ class ISO_7816_4_Card(Card):
     
     def cmd_parsetlv(self):
         "Decode the TLV data in the last response"
-        print TLV_utils.decode(self.last_result)
+        print TLV_utils.decode(self.last_result.data)
     
     ATRS = list(Card.ATRS)
     ATRS.extend( [

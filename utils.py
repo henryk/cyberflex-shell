@@ -1,5 +1,41 @@
 import pycsc, string, binascii, sys
 
+def represent_binary_fancy(len, value, mask = 0):
+    result = []
+    for i in range(len):
+        if i%4 == 0:
+            result.append( " " )
+        if i%8 == 0:
+            result.append( " " )
+        if mask & 0x01:
+            result.append( str(value & 0x01) )
+        else:
+            result.append( "." )
+        mask = mask >> 1
+        value = value >> 2
+    result.reverse()
+    
+    return "".join(result).strip()
+
+def parse_binary(value, bytemasks, verbose = False, value_len = 8):
+    ## Parses a binary structure and gives information back
+    ##  bytemasks is a sequence of (mask, value, string_if_no_match, string_if_match) tuples
+    result = []
+    for mask, byte, nonmatch, match in bytemasks:
+        
+        if verbose:
+            prefix = represent_binary_fancy(value_len, byte, mask) + ": "
+        else:
+            prefix = ""
+        if (value & mask) == (byte & mask):
+            if match is not None:
+                result.append(prefix + match)
+        else:
+            if nonmatch is not None:
+                result.append(prefix + nonmatch)
+    
+    return result
+
 _myprintable = " " + string.letters + string.digits + string.punctuation
 def hexdump(data, indent = 0, short = False):
     r"""Generates a nice hexdump of data and returns it. Consecutive lines will 

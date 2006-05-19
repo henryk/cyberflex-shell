@@ -1,15 +1,18 @@
-import crypto_utils, utils, pycsc, binascii, fnmatch
+import crypto_utils, utils, pycsc, binascii, fnmatch, sre
 from utils import C_APDU, R_APDU
 
 DEBUG = True
 #DEBUG = False
 
 class Card:
+    DRIVER_NAME = "Generic"
     APDU_GET_RESPONSE = C_APDU("\x00\xC0\x00\x00")
     APDU_VERIFY_PIN = C_APDU("\x00\x20\x00\x00")
     SW_OK = '\x90\x00'
+    ## Note: an item in this list must be a tuple of (atr, mask) where atr is a binary
+    ##   string and mask a binary mask. Alternatively mask may be None, then ATR must be a regex
+    ##   to match on the ATRs hexlify representation
     ATRS = []
-    DRIVER_NAME = "Generic"
     ## Note: a key in this dictionary may either be a two-byte string containing
     ## a binary status word, or a four-byte string containing a hexadecimal
     ## status word, possibly with ? characters marking variable nibbles. 
@@ -102,10 +105,14 @@ class Card:
         """Determine whether this class can handle a given pycsc object."""
         ATR = card.status().get("ATR","")
         for (knownatr, mask) in cls.ATRS:
-            if len(knownatr) != len(ATR):
-                continue
-            if crypto_utils.andstring(knownatr, mask) == crypto_utils.andstring(ATR, mask):
-                return True
+            if mask is None:
+                if sre.match(knownatr, binascii.hexlify(ATR), sre.I):
+                    return True
+            else:
+                if len(knownatr) != len(ATR):
+                    continue
+                if crypto_utils.andstring(knownatr, mask) == crypto_utils.andstring(ATR, mask):
+                    return True
         return False
     can_handle = classmethod(can_handle)
     
@@ -118,10 +125,10 @@ class Card:
         else:
             retval = None
             
-            desc = self.STATUS_WORDS.get(self.last_sw)
-            if desc is not None:
-                retval = desc
-            else:
+            retval = self.STATUS_WORDS.get(self.last_sw)
+            if retval is None:
+                retval = self.STATUS_WORDS.get(binascii.hexlify(self.last_sw).upper())
+            if retval is None:
                 target = binascii.b2a_hex(self.last_sw).upper()
                 for (key, value) in self.STATUS_WORDS.items():
                     if fnmatch.fnmatch(target, key):

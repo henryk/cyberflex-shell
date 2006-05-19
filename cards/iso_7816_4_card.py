@@ -5,9 +5,9 @@ class ISO_7816_4_Card(Card):
     APDU_SELECT_FILE = C_APDU("\x00\xa4\x00\x00")
     DRIVER_NAME = "ISO 7816-4"
     
-    def can_handle(cls, card):
-        return True
-    can_handle = classmethod(can_handle)
+##    def can_handle(cls, card):
+##        return True
+##    can_handle = classmethod(can_handle)
 
     def select_file(self, p1, p2, fid):
         result = self.send_apdu(
@@ -29,7 +29,13 @@ class ISO_7816_4_Card(Card):
             print TLV_utils.decode(result.data)
     
     def cmd_parsetlv(self):
-        print BER_utils.decode(self.last_result)
+        "Decode the TLV data in the last response"
+        print TLV_utils.decode(self.last_result)
+    
+    ATRS = list(Card.ATRS)
+    ATRS.extend( [
+            (".*", None),   ## For now we accept any card
+        ] )
     
     COMMANDS = dict(Card.COMMANDS)
     COMMANDS.update( {

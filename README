@@ -1,0 +1,8 @@
+This is a simple smartcard shell that has evolved from a more convenient way
+to enter APDUs (compare: pcsc-tool scriptor) through a tool to open a secure
+channel to a cyberflex card (hence the name) to a more generic tool to act
+on smart-cards.
+
+It is written in Python (you might need 2.4 or up) and needs pycsc to
+communicate with the smart card terminal (with PC/SC, e.g. pcsc-lite).
+You can get pycsc from http://homepage.mac.com/jlgiraud/pycsc/Pycsc.html

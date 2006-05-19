@@ -12,7 +12,7 @@ def represent_binary_fancy(len, value, mask = 0):
         else:
             result.append( "." )
         mask = mask >> 1
-        value = value >> 2
+        value = value >> 1
     result.reverse()
     
     return "".join(result).strip()
@@ -24,7 +24,7 @@ def parse_binary(value, bytemasks, verbose = False, value_len = 8):
     for mask, byte, nonmatch, match in bytemasks:
         
         if verbose:
-            prefix = represent_binary_fancy(value_len, byte, mask) + ": "
+            prefix = represent_binary_fancy(value_len, value, mask) + ": "
         else:
             prefix = ""
         if (value & mask) == (byte & mask):

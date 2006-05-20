@@ -95,20 +95,37 @@ tags = {
     },
 }
 
-def tvl_unpack(data):
-    tag = ord(data[0])
+def tlv_unpack(data):
+    constructed = (ord(data[0]) & 0x20) != 0 ## 0 = primitive, 0x20 = constructed
+    tag = ord(data[0]) ## FIXME: We don't handle (tag & 0x1F) == 0x1F correctly
     length = ord(data[1])
-    value = data[2:(2+length)]
-    rest = data[(2+length):]
     
-    return tag, length, value, rest
+    if length < 0x80:
+        data = data[2:]
+    elif length == 0x81:
+        length = ord(data[2])
+        data = data [3:]
+    elif length == 0x82:
+        length = ord(data[2]) * 256 + ord(data[3])
+        data = data[4:]
+    else:
+        raise ValueError, "Invalid TLV length field"
+    
+    value = data[:length]
+    rest = data[length:]
+    
+    return constructed, tag, length, value, rest
 
 def decode(data, context = None, level = 0):
     result = []
     while len(data) > 0:
-        tag, length, value, data = tvl_unpack(data)
+        constructed, tag, length, value, data = tlv_unpack(data)
         
-        interpretation = tags.get(context, tags.get(None, {})).get(tag, (binary, "Unknown"))
+        interpretation = tags.get(context, tags.get(None, {})).get(tag, None)
+        if interpretation is None:
+            if not constructed: interpretation = (binary, "Unknown field")
+            else: interpretation = (recurse, "Unknown structure", None)
+        
         current = ["\t"*level]
         current.append("Tag 0x%02X, Len 0x%02X, '%s':" % (tag, length, interpretation[1]))
         

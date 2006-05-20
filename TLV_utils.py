@@ -1,4 +1,4 @@
-import binascii, utils
+import binascii, utils, sre
 
 context_FCP = object()
 context_FMD = object()
@@ -79,8 +79,81 @@ def decode_file_descriptor_byte(value, verbose = True):
             result = result + "\nMaximum record length: %s" % i
         return result
 
+def parse_oid(value):
+    result = []
+    def next_arc(data):
+        bits = ord(data[0]) & 0x7F
+        while ord(data[0]) & 0x80 != 0:
+            data = data[1:]
+            bits = (bits << 7) + (ord(data[0]) & 0x7F)
+        data = data[1:]
+        return bits, data
+    
+    arc, value = next_arc(value)
+    if arc < 40:
+        result.append( 0 )
+        result.append( arc )
+    elif arc < 80:
+        result.append( 1 )
+        result.append( arc-40 )
+    else:
+        result.append( 2 )
+        result.append( arc-80 )
+    
+    while len(value) > 0:
+        arc,value = next_arc(value)
+        result.append( arc )
+    
+    return tuple(result)
+    
+def decode_oid(value):
+    oid = parse_oid(value)
+    return " " + ".".join([str(a) for a in oid])
+
+_gtimere = sre.compile(r'(\d{4})(\d\d)(\d\d)(\d\d)(?:(\d\d)(\d\d(?:[.,]\d+)?)?)?(|Z|(?:[+-]\d\d(?:\d\d)?))$')
+def decode_generalized_time(value):
+    matches = _gtimere.match(value)
+    if not matches:
+        return " "+value
+    else:
+        matches = matches.groups()
+        result = [" %s-%s-%s %s:" % matches[:4]]
+        if matches[4] is not None:
+            result.append("%s:" % matches[4])
+            if matches[5] is not None:
+                result.append("%s" % matches[5])
+            else:
+                result.append("00")
+        else:
+            result.append(":00:00")
+        
+        if matches[6] == "Z":
+            result.append(" UTC")
+        elif matches[6] != "":
+            result.append(" ")
+            result.append(matches[6])
+            if len(matches[6]) < 5:
+                result.append("00")
+        
+        return "".join(result)
+
 tags = {
     None: {
+        0x01: (lambda a: ord(a[0]) == 0 and " False" or " True", "Boolean"),
+        0x02: (number, "Integer"),
+        0x03: (binary, "Bit string"),
+        0x04: (binary, "Octet string"),
+        0x05: (lambda a: " Null", "Null"),
+        0x06: (decode_oid, "Object identifier"),
+        0x12: (ascii, "Numeric string"),
+        0x13: (ascii, "Printable string"),
+        0x14: (ascii, "Teletex string"), ## FIXME: support escape sequences?
+        0x15: (ascii, "Videotex string"), ## dito
+        0x16: (ascii, "IA5String"),
+        0x18: (decode_generalized_time, "Generalized time"),
+        0x30: (recurse, "Sequence", None),
+        0x31: (recurse, "Set", None),
+        
         0x62: (recurse, "File Control Parameters", context_FCP),
         0x64: (recurse, "File Management Data", context_FMD),
         0x6F: (recurse, "File Control Information", context_FCI),
@@ -97,17 +170,22 @@ tags = {
 
 def tlv_unpack(data):
     constructed = (ord(data[0]) & 0x20) != 0 ## 0 = primitive, 0x20 = constructed
-    tag = ord(data[0]) ## FIXME: We don't handle (tag & 0x1F) == 0x1F correctly
-    length = ord(data[1])
+    tag = ord(data[0]) 
+    data = data[1:]
+    if (tag & 0x1F) == 0x1F:
+        while ord(data[0]) & 0x80 == 0x80:
+            tag = tag << 8 + ord(data[0])
+            data = data[1:]
     
+    length = ord(data[0])
     if length < 0x80:
-        data = data[2:]
+        data = data[1:]
     elif length == 0x81:
-        length = ord(data[2])
-        data = data [3:]
+        length = ord(data[1])
+        data = data [2:]
     elif length == 0x82:
-        length = ord(data[2]) * 256 + ord(data[3])
-        data = data[4:]
+        length = ord(data[1]) * 256 + ord(data[2])
+        data = data[3:]
     else:
         raise ValueError, "Invalid TLV length field"
     
@@ -119,12 +197,16 @@ def tlv_unpack(data):
 def decode(data, context = None, level = 0):
     result = []
     while len(data) > 0:
+        if ord(data[0]) in (0x00, 0xFF):
+            data = data[1:]
+            continue
+        
         constructed, tag, length, value, data = tlv_unpack(data)
         
         interpretation = tags.get(context, tags.get(None, {})).get(tag, None)
         if interpretation is None:
             if not constructed: interpretation = (binary, "Unknown field")
-            else: interpretation = (recurse, "Unknown structure", None)
+            else: interpretation = (recurse, "Unknown structure", context)
         
         current = ["\t"*level]
         current.append("Tag 0x%02X, Len 0x%02X, '%s':" % (tag, length, interpretation[1]))
@@ -141,7 +223,11 @@ def decode(data, context = None, level = 0):
         elif interpretation[0] is ascii:
             current.append( " %s" % value)
         elif interpretation[0] is binary:
-            current.append( " %s" % utils.hexdump(value, short=True))
+            if len(value) < 0x10:
+                current.append( " %s" % utils.hexdump(value, short=True))
+            else:
+                current.append( "\n" + "\t"*(level+1) )
+                current.append( ("\n" + "\t"*(level+1)).join( utils.hexdump(value).splitlines() ) )
         elif callable(interpretation[0]):
             current.append( ("\n"+"\t"*(level+1)).join(interpretation[0](value).splitlines()) )
         
@@ -155,5 +241,5 @@ if __name__ == "__main__":
         +"ff dc 00 00 00 ff ff e4 10 00 00 ff ff").split()))
     
     decoded = decode(test)
-    print decoded
-    
+    #print decoded
+    print decode(file("c100").read())

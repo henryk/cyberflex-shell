@@ -22,7 +22,7 @@ file_descriptor_byte_descriptions = [
     (0xB8, 0x30, None,    "Reserved for proprietary uses"),
     (0xB8, 0x38, None,    "DF"),
     
-    ##(0x87, 0x00, None,    "No EF structure information given"),
+    (0x87, 0x00, None,    "No file structure information given"),
     (0x87, 0x01, None,    "Transparent"),
     (0x87, 0x02, None,    "Linear fixed, no further info"),
     (0x87, 0x03, None,    "Linear fixed, SIMPLE-TLV"),

@@ -26,6 +26,21 @@ class TCOS_Card(ISO_7816_4_Card):
         result = self.list_x(2)
         print "EFs: " + ", ".join([utils.hexdump(a, short=True) for a in result])
     
+    def cmd_list(self):
+        "List all EFs and DFs in current DF"
+        dirs = self.list_x(1)
+        files = self.list_x(2)
+        self.sw_changed = False
+        print "\n".join( ["[%s]" % utils.hexdump(a, short=True) for a in dirs]
+            + [" %s " % utils.hexdump(a, short=True) for a in files] )
+    
+    def cmd_cd(self, dir = None):
+        "Change into a DF, or into the MF if no dir is given"
+        if dir is None:
+            return self.cmd_selectfile("00", "00", "")
+        else:
+            return self.cmd_selectfile("01", "00", dir)
+    
     ATRS = list(Card.ATRS)
     ATRS.extend( [
             ("3bba96008131865d0064057b0203318090007d", None),
@@ -35,4 +50,6 @@ class TCOS_Card(ISO_7816_4_Card):
     COMMANDS.update( {
         "list_dirs": cmd_listdirs,
         "list_files": cmd_listfiles,
+        "ls": cmd_list,
+        "cd": cmd_cd,
         } )

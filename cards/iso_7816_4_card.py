@@ -3,7 +3,9 @@ from generic_card import *
 
 class ISO_7816_4_Card(Card):
     APDU_SELECT_FILE = C_APDU("\x00\xa4\x00\x00")
+    APDU_READ_BINARY = C_APDU("\x00\xb0\x00\x00\x00")
     DRIVER_NAME = "ISO 7816-4"
+    FID_MF = "\x3f\x00"
     
 ##    def can_handle(cls, card):
 ##        return True
@@ -15,6 +17,71 @@ class ISO_7816_4_Card(Card):
             p1 = p1, p2 = p2,
             data = fid, le = 0) )
         return result
+    
+    def change_dir(self, fid = None):
+        "Change to a child DF. Alternatively, change to MF if fid is None."
+        if fid is None:
+            return self.select_file(0x00, 0x00, "")
+        else:
+            return self.select_file(0x01, 0x00, fid)
+    
+    def cmd_cd(self, dir = None):
+        "Change into a DF, or into the MF if no dir is given"
+        
+        if dir is None:
+            result = self.change_dir()
+        else:
+            fid = binascii.a2b_hex("".join(dir.split()))
+            result = self.change_dir(fid)
+        
+        if len(result.data) > 0:
+            print utils.hexdump(result.data)
+            print TLV_utils.decode(result.data)
+    
+    def open_file(self, fid):
+        "Open an EF under the current DF"
+        return self.select_file(0x02, 0x00, fid)
+    
+    def cmd_open(self, file):
+        "Open a file"
+        fid = binascii.a2b_hex("".join(file.split()))
+        
+        result = self.open_file(fid)
+        if len(result.data) > 0:
+            print utils.hexdump(result.data)
+            print TLV_utils.decode(result.data)
+
+    def read_binary_file(self, offset = 0):
+        """Read from the currently selected EF.
+        Repeat calls to READ BINARY as necessary to get the whole EF."""
+        
+        if offset >= 1<<15:
+            raise ValueError, "offset is limited to 15 bits"
+        contents = ""
+        had_one = False
+        
+        while True:
+            command = C_APDU(self.APDU_READ_BINARY, p1 = offset >> 8, p2 = (offset & 0xff))
+            result = self.send_apdu(command)
+            if len(result.data) > 0:
+                contents = contents + result.data
+                offset = offset + len(result.data)
+            
+            if result.sw != self.SW_OK:
+                break
+            else:
+                had_one = True
+        
+        if had_one: ## If there was at least one successful pass, ignore any error SW. It probably only means "end of file"
+            self.sw_changed = False
+        
+        return contents
+    
+    def cmd_cat(self):
+        "Print a hexdump of the currently selected file (e.g. consecutive READ BINARY)"
+        contents = self.read_binary_file()
+        self.last_result = R_APDU(contents + self.last_sw)
+        print utils.hexdump(contents)
     
     def cmd_selectfile(self, p1, p2, fid):
         """Select a file on the card."""
@@ -40,6 +107,9 @@ class ISO_7816_4_Card(Card):
     COMMANDS = dict(Card.COMMANDS)
     COMMANDS.update( {
         "select_file": cmd_selectfile,
+        "cd": cmd_cd,
+        "cat": cmd_cat,
+        "open": cmd_open,
         "parse_tlv": cmd_parsetlv,
         } )
 

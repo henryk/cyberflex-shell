@@ -172,7 +172,8 @@ class APDU(object):
             self.parse( initbuff )
         
         for (name, value) in kwargs.items():
-            setattr(self, name, value)
+            if value is not None:
+                setattr(self, name, value)
     
     def _getdata(self):
         return self._data

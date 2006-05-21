@@ -54,11 +54,18 @@ def decode_file_descriptor_byte(value, verbose = True):
         
         if len(value) > 2:
             i = 0
-            for j in value[2:]:
+            for j in value[2:3]:
                 i = i * 256 + ord(j)
             attributes.append(
                 "maximum record length: %s" % i
             )
+            if len(value) > 4:
+                i = 0
+                for j in value[4:5]:
+                    i = i * 256 + ord(j)
+                attributes.append(
+                    "number of records: %s" % i
+                )
         
         return result + " (%s)" % "; ".join(attributes)
     else:
@@ -74,9 +81,14 @@ def decode_file_descriptor_byte(value, verbose = True):
                 )
         if len(value) > 2:
             i = 0
-            for j in value[2:]:
+            for j in value[2:3]:
                 i = i * 256 + ord(j)
             result = result + "\nMaximum record length: %s" % i
+            if len(value) > 4:
+                i = 0
+                for j in value[4:5]:
+                    i = i * 256 + ord(j)
+                result = result + "\nNumber of recods: %s" % i
         return result
 
 def parse_oid(value):
@@ -165,6 +177,8 @@ tags = {
         0x85: (binary, "Proprietary information"),
         0x86: (binary, "Security attributes"),
         0x87: (binary, "Identifier of an EF containing an extension of the FCI"),
+        0x88: (binary, "Short EF identifier"),
+        0x8A: (binary, "Life cycle status byte"),
     },
 }
 

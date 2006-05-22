@@ -154,3 +154,7 @@ class Card:
     
     def get_protocol(self):
         return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]
+    
+    def close_card(self):
+        "Disconnect from a card"
+        del self.card # FIXME: anything else to do?

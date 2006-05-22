@@ -9,8 +9,20 @@ def cmd_atr(card, *args):
     """Print the ATR of the currently inserted card."""
     print "ATR: %s" % utils.hexdump(card.card.status()['ATR'], short=True)
 
+def cmd_close(card, *args):
+    "Close the connection to the currently inserted card"
+    shell.unregister_post_hook(_print_sw)
+    shell.fallback = None
+    shell.unregister_pre_hook(_clear_sw)
+    shell.unregister_pre_hook(_update_prompt)
+    shell.unregister_commands(card)
+    shell.unregister_commands(card, COMMANDS)
+    card.close_card()
+    shell.set_prompt("(No card) ")
+
 COMMANDS = {
-    "atr": cmd_atr
+    "atr": cmd_atr,
+    "close_card": cmd_close,
 }
 
 def list_readers():

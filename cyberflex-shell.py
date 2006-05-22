@@ -86,13 +86,26 @@ class Cyberflex_Shell(Shell):
         if not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT:
             print "Please insert card ..."
             
+            last_was_mute = False
+            
             while not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT \
                 or newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
                 
-                newState = pycsc.getStatusChange(ReaderStates=[{'Reader': readerName, 'CurrentState':newState[0]['EventState']}])
+                try:
+                    newState = pycsc.getStatusChange(ReaderStates=[
+                            {'Reader': readerName, 'CurrentState':newState[0]['EventState']}
+                        ], Timeout = 100 
+                    ) ## 100 ms latency from Ctrl-C to abort should be almost unnoticeable by the user
+                except pycsc.PycscException, e:
+                    if e.args[0] == 'Command timeout.': pass ## ugly
+                    else: raise
                 
                 if newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
-                    print "Card is mute, please retry ..."
+                    if not last_was_mute:
+                        print "Card is mute, please retry ..."
+                    last_was_mute = True
+                else: 
+                    last_was_mute = False
                 
             print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
         

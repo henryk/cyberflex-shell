@@ -259,7 +259,7 @@ class Shell:
         
         self._commandsets.append( new_commandset )
     
-    def unregister_commands(self, target, command=None):
+    def unregister_commands(self, target, commands=None):
         """Unregister an object to provide commands.
         You should provide the same parameters as in the call to 
         register_commands()."""

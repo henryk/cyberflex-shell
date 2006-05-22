@@ -95,10 +95,6 @@ class ISO_7816_4_Card(Card):
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data)
     
-    def cmd_parsetlv(self):
-        "Decode the TLV data in the last response"
-        print TLV_utils.decode(self.last_result.data)
-    
     ATRS = list(Card.ATRS)
     ATRS.extend( [
             (".*", None),   ## For now we accept any card
@@ -110,7 +106,6 @@ class ISO_7816_4_Card(Card):
         "cd": cmd_cd,
         "cat": cmd_cat,
         "open": cmd_open,
-        "parse_tlv": cmd_parsetlv,
         } )
 
     STATUS_WORDS = dict(Card.STATUS_WORDS)

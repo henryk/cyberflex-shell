@@ -179,14 +179,26 @@ tags = {
         0x87: (binary, "Identifier of an EF containing an extension of the FCI"),
         0x88: (binary, "Short EF identifier"),
         0x8A: (binary, "Life cycle status byte"),
+        
+        0xA5: (recurse, "Proprietary information", None),
     },
 }
 
+BER_CLASSES = {
+    0x0: "universal",
+    0x1: "application",
+    0x2: "context-specific",
+    0x3: "private",
+}
+
 def tlv_unpack(data):
+    ber_class = (ord(data[0]) & 0xC0) >> 6
     constructed = (ord(data[0]) & 0x20) != 0 ## 0 = primitive, 0x20 = constructed
     tag = ord(data[0]) 
     data = data[1:]
     if (tag & 0x1F) == 0x1F:
+        tag = (tag << 8) | ord(data[0])
+        data = data[1:]
         while ord(data[0]) & 0x80 == 0x80:
             tag = tag << 8 + ord(data[0])
             data = data[1:]
@@ -206,7 +218,7 @@ def tlv_unpack(data):
     value = data[:length]
     rest = data[length:]
     
-    return constructed, tag, length, value, rest
+    return ber_class, constructed, tag, length, value, rest
 
 def decode(data, context = None, level = 0):
     result = []
@@ -215,12 +227,15 @@ def decode(data, context = None, level = 0):
             data = data[1:]
             continue
         
-        constructed, tag, length, value, data = tlv_unpack(data)
+        ber_class, constructed, tag, length, value, data = tlv_unpack(data)
         
         interpretation = tags.get(context, tags.get(None, {})).get(tag, None)
         if interpretation is None:
-            if not constructed: interpretation = (binary, "Unknown field")
-            else: interpretation = (recurse, "Unknown structure", context)
+            if not constructed: interpretation = [binary, "Unknown field"]
+            else: interpretation = [recurse, "Unknown structure", context]
+            
+            interpretation[1] = "%s (%s class)" % (interpretation[1], BER_CLASSES[ber_class])
+            interpretation = tuple(interpretation)
         
         current = ["\t"*level]
         current.append("Tag 0x%02X, Len 0x%02X, '%s':" % (tag, length, interpretation[1]))

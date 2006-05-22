@@ -1,4 +1,4 @@
-import crypto_utils, utils, pycsc, binascii, fnmatch, sre
+import TLV_utils, crypto_utils, utils, pycsc, binascii, fnmatch, sre
 from utils import C_APDU, R_APDU
 
 DEBUG = True
@@ -58,9 +58,14 @@ class Card:
         """Reset the card."""
         self.card.reconnect(init=pycsc.SCARD_RESET_CARD)
     
+    def cmd_parsetlv(self):
+        "Decode the TLV data in the last response"
+        print TLV_utils.decode(self.last_result.data)
+    
     COMMANDS = {
         "reset": cmd_reset,
-        "verify": cmd_verify
+        "verify": cmd_verify,
+        "parse_tlv": cmd_parsetlv,
     }
 
     def _real_send(self, apdu):

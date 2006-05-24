@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE Project SYSTEM "Project-3.5.dtd">
+<!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2005-10-10, 03:45:04 -->
-<!-- Copyright (C) 2005 Henryk Plötz, henryk@ploetzli.ch -->
-<Project version="3.5">
+<!-- Saved: 2006-05-22, 09:18:42 -->
+<!-- Copyright (C) 2006 Henryk Plötz, henryk@ploetzli.ch -->
+<Project version="3.7">
+  <ProgLanguage mixed="0">Python</ProgLanguage>
+  <UIType>Qt</UIType>
   <Description></Description>
   <Version>0.1</Version>
   <Author>Henryk Plötz</Author>
@@ -36,6 +38,24 @@
     </Source>
     <Source>
       <Name>shell.py</Name>
+    </Source>
+    <Source>
+      <Name>TLV_utils.py</Name>
+    </Source>
+    <Source>
+      <Name>brutefid.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>iso_7816_4_card.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>tcos_card.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>starcos_card.py</Name>
     </Source>
   </Sources>
   <Forms>

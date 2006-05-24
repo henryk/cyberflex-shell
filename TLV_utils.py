@@ -169,6 +169,7 @@ tags = {
         0x62: (recurse, "File Control Parameters", context_FCP),
         0x64: (recurse, "File Management Data", context_FMD),
         0x6F: (recurse, "File Control Information", context_FCI),
+        
         0x80: (number, "Number of data bytes in the file, excluding structural information"),
         0x81: (number, "Number of data bytes in the file, including structural information"),
         0x82: (decode_file_descriptor_byte, "File descriptor byte"),
@@ -263,6 +264,21 @@ def decode(data, context = None, level = 0):
         result.append( "".join(current) )
     
     return "\n".join(result)
+
+def unpack(data):
+    result = []
+    while len(data) > 0:
+        if ord(data[0]) in (0x00, 0xFF):
+            data = data[1:]
+            continue
+        
+        ber_class, constructed, tag, length, value, data = tlv_unpack(data)
+        if not constructed:
+            result.append( (tag, length, value) )
+        else:
+            result.append( (tag, length, unpack(value)) )
+    
+    return result
 
 if __name__ == "__main__":
     test = binascii.unhexlify("".join(("6f 2b 83 02 2f 00 81 02 01 00 82 03 05 41 26 85" \

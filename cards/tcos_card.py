@@ -1,4 +1,4 @@
-import utils
+import utils, TLV_utils
 from iso_7816_4_card import *
 
 class TCOS_Card(ISO_7816_4_Card):
@@ -26,13 +26,62 @@ class TCOS_Card(ISO_7816_4_Card):
         result = self.list_x(2)
         print "EFs: " + ", ".join([utils.hexdump(a, short=True) for a in result])
     
-    def cmd_list(self):
-        "List all EFs and DFs in current DF"
+    def _str_to_long(value):
+        num = 0
+        for i in value:
+            num = num * 256
+            num = num + ord(i)
+        return num
+    _str_to_long = staticmethod(_str_to_long)
+    
+    def _find_recursive(search_tag, data):
+        while len(data) > 0:
+            if ord(data[0]) in (0x00, 0xFF):
+                data = data[1:]
+                continue
+            
+            ber_class, constructed, tag, length, value, data = TLV_utils.tlv_unpack(data)
+            if not constructed:
+                if tag == search_tag:
+                    return value
+            else:
+                ret = TCOS_Card._find_recursive(search_tag, value)
+                if ret is not None: return ret
+        return None
+    _find_recursive = staticmethod(_find_recursive)
+
+    _ls_l_template = "%(name)10s\t%(type)s\t%(size)4s"
+    def cmd_list(self, *options):
+        """List all EFs and DFs in current DF. Call with -l for verbose information (caution: deselects current file)"""
         dirs = self.list_x(1)
         files = self.list_x(2)
+        
+        if "-l" in options:
+            response_DF = {}
+            response_EF = {}
+            for DF in dirs:
+                response_DF[DF] = self.select_file(0x01, 0x00, DF)
+                self.select_file(0x03, 0x00, "")
+            for EF in files:
+                response_EF[EF] = self.select_file(0x02, 0x00, EF)
+        
         self.sw_changed = False
-        print "\n".join( ["[%s]" % utils.hexdump(a, short=True) for a in dirs]
-            + [" %s " % utils.hexdump(a, short=True) for a in files] )
+        
+        if "-l" in options:
+            print self._ls_l_template % {"name": "Name", "type": "Type", "size": "Size"}
+            for FID in dirs:
+                name = "[" + utils.hexdump(FID, short=True) + "]"
+                type = "DF"
+                size = ""
+                print self._ls_l_template % locals()
+            for FID in files:
+                name = " " + utils.hexdump(FID, short=True) + " "
+                type = "EF"
+                size = TCOS_Card._str_to_long(TCOS_Card._find_recursive(0x81, response_EF[FID].data))
+                print self._ls_l_template % locals()
+        else:
+            print "\n".join( ["[%s]" % utils.hexdump(a, short=True) for a in dirs]
+                + [" %s " % utils.hexdump(a, short=True) for a in files] )
     
     ATRS = list(Card.ATRS)
     ATRS.extend( [

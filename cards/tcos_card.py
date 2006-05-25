@@ -50,7 +50,7 @@ class TCOS_Card(ISO_7816_4_Card):
         return None
     _find_recursive = staticmethod(_find_recursive)
 
-    _ls_l_template = "%(name)10s\t%(type)s\t%(size)4s"
+    _ls_l_template = "%(name)-12s\t%(type)3s\t%(size)4s"
     def cmd_list(self, *options):
         """List all EFs and DFs in current DF. Call with -l for verbose information (caution: deselects current file)"""
         dirs = self.list_x(1)
@@ -69,6 +69,8 @@ class TCOS_Card(ISO_7816_4_Card):
         
         if "-l" in options:
             print self._ls_l_template % {"name": "Name", "type": "Type", "size": "Size"}
+            dirs.sort()
+            files.sort()
             for FID in dirs:
                 name = "[" + utils.hexdump(FID, short=True) + "]"
                 type = "DF"

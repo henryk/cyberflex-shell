@@ -341,6 +341,7 @@ class Shell:
         "Print help, either for all commands or for a specific one."
         if command is None:
             command_list = self.get_command_mapping().keys()
+            command_list.sort()
             for command in command_list:
                 print self.SHORT_HELP_FORMATSTRING % self.help(command)
         else:

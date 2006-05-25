@@ -23,7 +23,7 @@ class Cyberflex_Shell(Shell):
         """Print the ATR of the currently inserted card."""
         print "ATR: %s" % utils.hexdump(self.card.card.status()['ATR'], short=True)
     
-    def cmd_close(self, *args):
+    def cmd_disconnect(self, *args):
         "Close the connection to the currently inserted card"
         self.unregister_post_hook(self._print_sw)
         self.fallback = None
@@ -35,7 +35,7 @@ class Cyberflex_Shell(Shell):
         self.card.close_card()
         self.set_prompt("(No card) ")
     
-    def cmd_reopen(self, reader = None):
+    def cmd_reconnect(self, reader = None):
         "Re-open the connection to the card"
         self.cmd_close()
         self.cmd_open(reader)
@@ -63,7 +63,7 @@ class Cyberflex_Shell(Shell):
         if self.card.sw_changed:
             print self.card.decode_statusword()
     
-    def cmd_open(self, reader = None):
+    def cmd_connect(self, reader = None):
         "Open the connection to a card"
         if reader is None:
             reader = self.reader
@@ -132,12 +132,12 @@ class Cyberflex_Shell(Shell):
     
     CARD_COMMANDS = {
         "atr": cmd_atr,
-        "close_card": cmd_close,
-        "reopen_card": cmd_reopen,
+        "disconnect": cmd_disconnect,
+        "reconnect": cmd_reconnect,
     }
     
     NOCARD_COMMANDS = {
-        "open_card": cmd_open,
+        "connect": cmd_connect,
     }
     
 

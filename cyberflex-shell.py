@@ -63,6 +63,33 @@ class Cyberflex_Shell(Shell):
         if self.card.sw_changed:
             print self.card.decode_statusword()
     
+    def _find_driver_class(driver_name):
+        for i in dir(cards):
+            _obj = getattr(cards, i)
+            if driver_name.lower() == i.lower():
+                return _obj
+            if hasattr(_obj, "DRIVER_NAME") and driver_name.lower() == getattr(_obj, "DRIVER_NAME").lower():
+                return _obj
+        raise NameError, "Class not found"
+    
+    _find_driver_class = staticmethod(_find_driver_class)
+    
+    def cmd_unloaddriver(self, driver_name):
+        "Remove a driver from the current connection"
+        self.unregister_commands(self.card)
+        try:
+            self.card.remove_classes( [self._find_driver_class(driver_name)] )
+        finally:
+            self.register_commands(self.card)
+    
+    def cmd_loaddriver(self, driver_name):
+        "Add a driver to the current connection"
+        self.unregister_commands(self.card)
+        try:
+            self.card.add_classes( [self._find_driver_class(driver_name)] )
+        finally:
+            self.register_commands(self.card)
+    
     def cmd_connect(self, reader = None):
         "Open the connection to a card"
         if reader is None:
@@ -134,6 +161,8 @@ class Cyberflex_Shell(Shell):
         "atr": cmd_atr,
         "disconnect": cmd_disconnect,
         "reconnect": cmd_reconnect,
+        "driver_load": cmd_loaddriver,
+        "driver_unload": cmd_unloaddriver,
     }
     
     NOCARD_COMMANDS = {

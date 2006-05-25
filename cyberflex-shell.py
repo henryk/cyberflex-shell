@@ -163,5 +163,5 @@ if __name__ == "__main__":
     
     print "Cyberflex shell"
     shell = Cyberflex_Shell("cyberflex-shell")
-    shell.cmd_open(reader)
+    shell.cmd_connect(reader)
     shell.run()

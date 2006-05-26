@@ -37,8 +37,8 @@ class Cyberflex_Shell(Shell):
     
     def cmd_reconnect(self, reader = None):
         "Re-open the connection to the card"
-        self.cmd_close()
-        self.cmd_open(reader)
+        self.cmd_disconnect()
+        self.cmd_connect(reader)
     
     def _update_prompt(self):
         self.set_prompt(self.card.get_prompt() + " ")

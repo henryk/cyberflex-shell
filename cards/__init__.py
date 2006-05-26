@@ -54,6 +54,9 @@ class Cardmultiplexer:
     provides support for merging some list and dictionary class attributes 
     of the participating classes instead of overriding them."""
     
+    MERGE_DICTS = ("APPLICATIONS", "COMMANDS", "STATUS_WORDS")
+    MERGE_LISTS = ()
+    
     def __init__(self, classes, *args, **kwargs):
         """Creates a new Cardmultiplexer object. 
         
@@ -91,10 +94,14 @@ class Cardmultiplexer:
         (newcls, delcls) = self._update_classes(list(classes), [])
         for cls in newcls:
             cls.__init__(self, *self._init_args, **self._init_kwargs)
+        
+        self._merge_attributes()
     
     def remove_classes(self, classes):
         """Remove classes from this Cardmultiplexer object."""
         (newcls, delcls) = self._update_classes([], list(classes))
+        
+        self._merge_attributes()
     
     def _update_classes(self, addclasses, delclasses):
         """This handles the task of figuring out which classes to actually
@@ -132,3 +139,26 @@ class Cardmultiplexer:
         self.__class__ = _classobj("Cardmultiplexer (merged)", 
             tuple(classes_needed + [Cardmultiplexer]), {})
         return (diffplus,diffminus)
+    
+    def _merge_attributes(self):
+        """Update the local copy of merged attributes."""
+        
+        for attr in self.MERGE_DICTS:
+            tmpdict = {}
+            have_one = False
+            for cls in self._classes:
+                if hasattr(cls, attr):
+                    tmpdict.update( getattr(cls, attr) )
+                    have_one = True
+            if have_one:
+                setattr(self, attr, tmpdict)
+        
+        for attr in self.MERGE_LISTS:
+            tmplist = []
+            have_one = False
+            for cls in self._classes:
+                if hasattr(cls, attr):
+                    tmplist.extend( getattr(cls, attr) )
+                    have_one = True
+            if have_one:
+                setattr(self, attr, tmplist)

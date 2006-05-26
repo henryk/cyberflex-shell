@@ -9,6 +9,7 @@ class Card:
     APDU_GET_RESPONSE = C_APDU("\x00\xC0\x00\x00")
     APDU_VERIFY_PIN = C_APDU("\x00\x20\x00\x00")
     SW_OK = '\x90\x00'
+    SW1_RETRY = 0x61 ## If this SW1 is received then GET RESPONSE should be called with SW2
     ## Note: an item in this list must be a tuple of (atr, mask) where atr is a binary
     ##   string and mask a binary mask. Alternatively mask may be None, then ATR must be a regex
     ##   to match on the ATRs hexlify representation
@@ -85,6 +86,16 @@ class Card:
             print "<< " + utils.hexdump(result_binary, indent = 3)
         return result
     
+    def _send_with_retry(self, apdu):
+        result = self._real_send(apdu)
+        
+        if result.sw1 == self.SW1_RETRY:
+            ## Need to call GetResponse
+            gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result.sw2) # FIXME
+            result = R_APDU(self._real_send(gr_apdu))
+        
+        return result
+    
     def send_apdu(self, apdu):
         if DEBUG:
             print "%s\nBeginning transaction %i" % ('-'*80, self._i)
@@ -92,12 +103,7 @@ class Card:
         if hasattr(self, "before_send"):
             apdu = self.before_send(apdu)
         
-        result = self._real_send(apdu)
-        
-        if result.sw1 == 0x61:
-            ## Need to call GetResponse
-            gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result.sw2) # FIXME
-            result = R_APDU(self._real_send(gr_apdu))
+        result = self._send_with_retry(apdu)
         
         if DEBUG:
             print "Ending transaction %i\n%s\n" % (self._i, '-'*80)

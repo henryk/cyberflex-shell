@@ -37,7 +37,7 @@ def parse_binary(value, bytemasks, verbose = False, value_len = 8):
     return result
 
 _myprintable = " " + string.letters + string.digits + string.punctuation
-def hexdump(data, indent = 0, short = False):
+def hexdump(data, indent = 0, short = False, linelen = 16):
     r"""Generates a nice hexdump of data and returns it. Consecutive lines will 
     be indented with indent spaces. When short is true, will instead generate 
     hexdump without adresses and on one line.
@@ -56,15 +56,16 @@ def hexdump(data, indent = 0, short = False):
     if short:
         return "%s (%s)" % (hexable(data), printable(data))
     
+    FORMATSTRING = "%04x:  %-"+ str(linelen*3) +"s  %-"+ str(linelen) +"s"
     result = ""
-    (head, tail) = (data[:16], data[16:])
+    (head, tail) = (data[:linelen], data[linelen:])
     pos = 0
     while len(head) > 0:
         if pos > 0:
             result = result + "\n%s" % (' ' * indent)
-        result = result + "%04x:  %-48s  %-16s" % (pos, hexable(head), printable(head))
+        result = result + FORMATSTRING % (pos, hexable(head), printable(head))
         pos = pos + len(head)
-        (head, tail) = (tail[:16], tail[16:])
+        (head, tail) = (tail[:linelen], tail[linelen:])
     return result
 
 LIFE_CYCLES = {0x01: "Load file = loaded",

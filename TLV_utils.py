@@ -169,7 +169,8 @@ tags = {
         0x62: (recurse, "File Control Parameters", context_FCP),
         0x64: (recurse, "File Management Data", context_FMD),
         0x6F: (recurse, "File Control Information", context_FCI),
-        
+    },
+    context_FCI: {
         0x80: (number, "Number of data bytes in the file, excluding structural information"),
         0x81: (number, "Number of data bytes in the file, including structural information"),
         0x82: (decode_file_descriptor_byte, "File descriptor byte"),
@@ -184,6 +185,8 @@ tags = {
         0xA5: (recurse, "Proprietary information", None),
     },
 }
+
+tags[context_FCP] = tags[context_FCI]
 
 BER_CLASSES = {
     0x0: "universal",

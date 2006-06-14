@@ -15,6 +15,43 @@ class Cyberflex_Shell(Shell):
         Shell.__init__(self, basename)
         self.register_commands(self, self.NOCARD_COMMANDS)
     
+    def cmd_runscript(self, filename):
+        "Run an APDU script from a file"
+        fh = file(filename)
+        
+        doit = False
+        
+        for line in fh:
+            if line[:2] == "//" or line[:1] == "#":
+                continue
+            
+            if not doit:
+                print "?? %s", line.strip()
+                print "Execute? (Yes/No/All/Exit) ",
+                answer = sys.stdin.readline()
+                if answer[0].lower() in ('y', "\n"):
+                    pass
+                elif answer[0].lower() == 'n':
+                    continue
+                elif answer[0].lower() == 'a':
+                    doit = True
+                elif answer[0].lower() == 'e':
+                    return
+                else:
+                    continue
+            
+            self.parse_and_execute(line)
+            
+            if self.card.sw_changed and self.card.last_sw != self.card.SW_OK:
+                print "SW was not %s. Ignore (i) or Abort (a)? " % binascii.hexlify(self.card.SW_OK),
+                answer = sys.stdin.readline()
+                if answer[0].lower() in ('i', "\n"):
+                    pass
+                elif answer[0].lower() == 'a':
+                    return
+                else:
+                    return
+    
     def cmd_listreaders(self):
         "List the available readers"
         list_readers()
@@ -163,6 +200,7 @@ class Cyberflex_Shell(Shell):
         "reconnect": cmd_reconnect,
         "driver_load": cmd_loaddriver,
         "driver_unload": cmd_unloaddriver,
+        "run_script": cmd_runscript,
     }
     
     NOCARD_COMMANDS = {

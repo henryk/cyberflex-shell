@@ -9,7 +9,7 @@ number = object()
 ascii = object()
 
 file_descriptor_byte_descriptions = [
-    #byte  mask  no match match
+    #mask  byte  no match match
     (0x80, 0x80, None,    "RFU"),
     (0xC0, 0x40, "non shareable", "shareable"),
     
@@ -37,6 +37,16 @@ data_coding_byte_descriptions = [
     (0x60, 0x20, None,    "proprietary"),
     (0x60, 0x40, None,    "write OR"),
     (0x60, 0x60, None,    "write AND"),
+]
+
+life_cycle_status_byte_descriptions = [
+    (0xF0, 0x00, "Proprietary", None),
+    (0xFF, 0x00, None,    "No information given"),
+    (0xFF, 0x01, None,    "Creation state"),
+    (0xFF, 0x03, None,    "Initialisation state"),
+    (0xFD, 0x05, None,    "Operational state (activated)"),
+    (0xFD, 0x04, None,    "Operational state (deactivated)"),
+    (0xFC, 0x0C, None,    "Termination state"),
 ]
 
 def decode_file_descriptor_byte(value, verbose = True):
@@ -149,6 +159,13 @@ def decode_generalized_time(value):
         
         return "".join(result)
 
+def decode_lcs(value):
+    value = ord(value[0])
+    return "0x%02x\n%s" % (value, "\n".join(
+            utils.parse_binary(value, life_cycle_status_byte_descriptions, True)
+        )
+    )
+
 tags = {
     None: {
         0x01: (lambda a: ord(a[0]) == 0 and " False" or " True", "Boolean"),
@@ -180,7 +197,7 @@ tags = {
         0x86: (binary, "Security attributes"),
         0x87: (binary, "Identifier of an EF containing an extension of the FCI"),
         0x88: (binary, "Short EF identifier"),
-        0x8A: (binary, "Life cycle status byte"),
+        0x8A: (decode_lcs, "Life cycle status byte"),
         
         0xA5: (recurse, "Proprietary information", None),
     },

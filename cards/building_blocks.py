@@ -4,6 +4,8 @@ from utils import C_APDU, R_APDU
 import utils, TLV_utils
 
 class Card_with_80_aa:
+    APDU_LIST_X = C_APDU("\x80\xaa\x01\x00\x00")
+
     def list_x(self, x):
         "Get a list of x objects, where x is one of 1 (DFs) or 2 (EFs) or 3 (DFs and EFs)"
         result = self.send_apdu(C_APDU(self.APDU_LIST_X, p1=x))

@@ -64,14 +64,14 @@ def decode_file_descriptor_byte(value, verbose = True):
         
         if len(value) > 2:
             i = 0
-            for j in value[2:3]:
+            for j in value[2:4]:
                 i = i * 256 + ord(j)
             attributes.append(
                 "maximum record length: %s" % i
             )
             if len(value) > 4:
                 i = 0
-                for j in value[4:5]:
+                for j in value[4:6]:
                     i = i * 256 + ord(j)
                 attributes.append(
                     "number of records: %s" % i
@@ -91,14 +91,14 @@ def decode_file_descriptor_byte(value, verbose = True):
                 )
         if len(value) > 2:
             i = 0
-            for j in value[2:3]:
+            for j in value[2:4]:
                 i = i * 256 + ord(j)
             result = result + "\nMaximum record length: %s" % i
             if len(value) > 4:
                 i = 0
-                for j in value[4:5]:
+                for j in value[4:6]:
                     i = i * 256 + ord(j)
-                result = result + "\nNumber of recods: %s" % i
+                result = result + "\nNumber of records: %s" % i
         return result
 
 def parse_oid(value):
@@ -161,7 +161,7 @@ def decode_generalized_time(value):
 
 def decode_lcs(value):
     value = ord(value[0])
-    return "0x%02x\n%s" % (value, "\n".join(
+    return " 0x%02x\n%s" % (value, "\n".join(
             utils.parse_binary(value, life_cycle_status_byte_descriptions, True)
         )
     )

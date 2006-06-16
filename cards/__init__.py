@@ -55,6 +55,7 @@ class Cardmultiplexer:
     of the participating classes instead of overriding them."""
     
     MERGE_DICTS = ("APPLICATIONS", "COMMANDS", "STATUS_WORDS")
+    MERGE_DICTS_RECURSIVE = ("TLV_OBJECTS", )
     MERGE_LISTS = ()
     
     def __init__(self, classes, *args, **kwargs):
@@ -143,12 +144,29 @@ class Cardmultiplexer:
     def _merge_attributes(self):
         """Update the local copy of merged attributes."""
         
-        for attr in self.MERGE_DICTS:
+        for attr in self.MERGE_DICTS + self.MERGE_DICTS_RECURSIVE:
             tmpdict = {}
             have_one = False
             for cls in self._classes:
                 if hasattr(cls, attr):
-                    tmpdict.update( getattr(cls, attr) )
+                    if not attr in self.MERGE_DICTS_RECURSIVE:
+                        tmpdict.update( getattr(cls, attr) )
+                    else:
+                        def recurse(target, source):
+                            for (key, value) in source.items():
+                                if target.has_key(key):
+                                    if isinstance(value, dict) and isinstance(target[key], dict):
+                                        recurse( target[key], value )
+                                    elif isinstance(value, dict):
+                                        target[key] = dict(value)
+                                    else:
+                                        target[key] = value
+                                else:
+                                    if isinstance(value, dict):
+                                        target[key] = dict(value)
+                                    else:
+                                        target[key] = value
+                        recurse( tmpdict, getattr(cls, attr) )
                     have_one = True
             if have_one:
                 setattr(self, attr, tmpdict)

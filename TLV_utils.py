@@ -1,12 +1,28 @@
-import binascii, utils, sre
+import binascii, utils, sre, sys
 
-context_FCP = object()
-context_FMD = object()
-context_FCI = object()
-recurse = object()
-binary = object()
-number = object()
-ascii = object()
+class identifier:
+    """An identifier, because I'm too lazy to use quotes all over the place.
+    Instantiating an object of this type registers a name in the current scope, essentially
+    making each instantiation of this class equal to
+        foo = identifier("foo")
+    even when you only write
+        identifier("foo")
+    """
+    def __init__(self,name):
+        self.name = name
+        sys._getframe(1).f_locals[name] = self
+    def __str__(self):
+        return self.name
+    def __repr__(self):
+        return "identifier(%r)" % self.name
+
+identifier("context_FCP")
+identifier("context_FMD")
+identifier("context_FCI")
+identifier("recurse")
+identifier("binary")
+identifier("number")
+identifier("ascii")
 
 file_descriptor_byte_descriptions = [
     #mask  byte  no match match
@@ -241,7 +257,7 @@ def tlv_unpack(data):
     
     return ber_class, constructed, tag, length, value, rest
 
-def decode(data, context = None, level = 0):
+def decode(data, context = None, level = 0, tags=tags):
     result = []
     while len(data) > 0:
         if ord(data[0]) in (0x00, 0xFF):
@@ -263,7 +279,7 @@ def decode(data, context = None, level = 0):
         
         if interpretation[0] is recurse:
             current.append("\n")
-            current.append( decode(value, interpretation[2], level+1) )
+            current.append( decode(value, interpretation[2], level+1, tags=tags) )
         elif interpretation[0] is number:
             num = 0
             for i in value:

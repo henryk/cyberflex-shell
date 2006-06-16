@@ -36,7 +36,7 @@ class ISO_7816_4_Card(Card):
         
         if len(result.data) > 0:
             print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data)
+            print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
     def open_file(self, fid):
         "Open an EF under the current DF"
@@ -49,7 +49,7 @@ class ISO_7816_4_Card(Card):
         result = self.open_file(fid)
         if len(result.data) > 0:
             print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data)
+            print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
 
     def read_binary_file(self, offset = 0):
         """Read from the currently selected EF.
@@ -93,7 +93,7 @@ class ISO_7816_4_Card(Card):
         result = self.select_file(p1, p2, fid)
         if len(result.data) > 0:
             print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data)
+            print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
     ATRS = list(Card.ATRS)
     ATRS.extend( [
@@ -162,3 +162,5 @@ class ISO_7816_4_Card(Card):
         "6A87": "Wrong parameter(s) P1-P2, Lc inconsistent with P1-P2",
         "6A88": "Wrong parameter(s) P1-P2, Referenced data not found",
     } )
+    
+    TLV_OBJECTS = TLV_utils.tags

@@ -27,6 +27,8 @@ class Card:
         '6C??': "Bad value for LE, 0x%(SW2)02x is the correct value.",
         '63C?': lambda SW1,SW2: "The counter has reached the value '%i'" % (SW2%16)
     }
+    ## For the format of this dictionary of dictionaries see TLV_utils.tags
+    TLV_OBJECTS = {}
 
     def __init__(self, card = None, reader = None):
         if card is None:
@@ -61,7 +63,7 @@ class Card:
     
     def cmd_parsetlv(self):
         "Decode the TLV data in the last response"
-        print TLV_utils.decode(self.last_result.data)
+        print TLV_utils.decode(self.last_result.data, tags=self.TLV_OBJECTS)
     
     COMMANDS = {
         "reset": cmd_reset,

@@ -55,6 +55,11 @@ class Cyberflex_Shell(Shell):
     def cmd_listreaders(self):
         "List the available readers"
         list_readers()
+    
+    def cmd_eval(self, *args):
+        "Execute raw python code"
+        eval(" ".join(args))
+        print
 
     def cmd_atr(self, *args):
         """Print the ATR of the currently inserted card."""
@@ -192,6 +197,7 @@ class Cyberflex_Shell(Shell):
     COMMANDS = dict(Shell.COMMANDS)
     COMMANDS.update( {
         "list_readers": cmd_listreaders,
+        "eval": cmd_eval,
     } )
     
     CARD_COMMANDS = {

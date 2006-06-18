@@ -6,7 +6,10 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
     DRIVER_NAME = "MTCOS"
     
     ATRS = [
-            ("3bfe9100ff918171fe40004120001177b1024d54434f537301cf", None),
+            # This is the correct ATR according to PC/SC v.2 part 3
+            ("3b8980014d54434f53730102013f", None),
+            # This is what SCM SCR331/SDI010 shows
+            ("3BFE9100FF918171FE40004120001177B1024D54434F537301CF", None),
         ]
     
     COMMANDS = {
@@ -143,19 +146,22 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
             
             b5 = ord(part[4])
             b6 = ord(part[5])
-            if b5 == 0xff:
-                partresponse.append("\nSecure messaging: no checksum required")
+            if b5 == 0xff and b6 == 0xff and len(secrets) <= 1:
+                partresponse.append(", No secure messaging required")
             else:
-                partresponse.append("\nCryptographic checksum with ")
-                decode_key(b5)
-            
-            if b6 == 0xff:
-                partresponse.append("\nSecure messaging: no encryption required")
-            elif not (b6 & 0x20):
-                partresponse.append("\nEncryption with ")
-                decode_key(b6)
-            else:
-                partresponse.append("\nEncryption: RFU")
+                if b5 == 0xff:
+                    partresponse.append("\nSecure messaging: no checksum required")
+                else:
+                    partresponse.append("\nCryptographic checksum with ")
+                    decode_key(b5)
+                
+                if b6 == 0xff:
+                    partresponse.append("\nSecure messaging: no encryption required")
+                elif not (b6 & 0x20):
+                    partresponse.append("\nEncryption with ")
+                    decode_key(b6)
+                else:
+                    partresponse.append("\nEncryption: RFU")
             
             if len(value) != 6:
                 results.append("\n\t".join("".join(partresponse).splitlines()))

@@ -1,8 +1,49 @@
 This is a simple smartcard shell that has evolved from a more convenient way
-to enter APDUs (compare: pcsc-tool scriptor) through a tool to open a secure
+to enter APDUs (compare: pcsc-tools scriptor) through a tool to open a secure
 channel to a cyberflex card (hence the name) to a more generic tool to act
 on smart-cards.
 
-It is written in Python (you might need 2.4 or up) and needs pycsc to
-communicate with the smart card terminal (with PC/SC, e.g. pcsc-lite).
+It is written in Python (you might need 2.4 or up) and needs pycsc 0.3 (or up)
+to communicate with the smart card terminal (with PC/SC, e.g. pcsc-lite).
 You can get pycsc from http://homepage.mac.com/jlgiraud/pycsc/Pycsc.html
+
+NOTE: pycsc might not compile out of the box with current pcsc-lite (e.g. 
+1.3.*). You should use the included pycsc-0.0.3_new-pcsc.patch in that
+case.
+
+The shell has only been tested on a Linux system but should be platform
+independent, if you have Python, PC/SC and pycsc for your target platform.
+I am however unable to give support for any platform but Linux. 
+
+Some of the shell functionality (history, tab-completion, etc.) is
+provided by python's readline module which is not available for all 
+platforms, IIRC.
+
+
+INSTRUCTIONS:
+Simply start cyberflex-shell.py. You may also call it with parameter -l
+to list all detected readers or parameter -r to select one of the readers.
+Within the shell you may enter APDUs (in hex, case ignored, white space 
+ignored) and press enter to send them and see the response.
+
+Use the commands connect, disconnect or reconnect to open, close or open-
+and-close the connection to a smart-card. This is especially helpful when
+you want to change the card without exiting from the shell.
+
+For some card types there are card drivers provided in the cards/ directory,
+and the shell will try to automatically load the right driver(s). (I made 
+the story rather complicated, see cards/__init__.py.) 
+You should be able to load and unload drivers using the driver_load and 
+driver_unload commands at will, but that is a new and experimental feature.
+
+Most card drivers provide additional commands to simplify working with
+the card in question. Use the help command to see the set of currently
+available commands.
+
+Note that this is an educational tool and not for security purposes. All
+commands are written to the shell history (${HOME}/.cyberflex-shell.history)
+so be aware that your PINs and other sensitive data might end up on your 
+hard-disk.
+
+Have fun
+  -- Henryk Plötz <henryk@ploetzli.ch>, July 2006

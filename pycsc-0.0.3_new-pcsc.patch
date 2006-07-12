@@ -1,0 +1,77 @@
+diff -u pycsc-0.0.3_/pycsc.c pycsc-0.0.3/pycsc.c
+--- pycsc-0.0.3_/pycsc.c	2004-06-21 02:54:29.000000000 +0200
++++ pycsc-0.0.3/pycsc.c	2006-05-03 04:51:51.000000000 +0200
+@@ -23,7 +23,7 @@
+ #endif
+ 
+ /* Internal tool */
+-static LONG getReaderList(SCARDCONTEXT hContext, LPSTR* pmszReaders, 
++static LONG getReaderList(SCARDCONTEXT hContext, LPTSTR* pmszReaders, 
+                           DWORD *pdwReaders);
+ 
+ #ifdef _WINDOWS_
+@@ -256,14 +256,14 @@
+   BYTE  pbAtr[MAX_ATR_SIZE];
+   DWORD dwAtrLen, dwProt=0, dwState=0;
+   DWORD dwReaderLen;
+-  LPSTR pcReaders;
++  LPTSTR pcReaders;
+   LONG  rv;
+   PyObject *ret_value;
+ 
+   dwReaderLen = 10000;
+   dwAtrLen = 0;
+   /* Dry run to get the length of the reader name */ 
+-  rv = SCardStatus( object->hCard, (LPSTR) NULL, &dwReaderLen, 
++  rv = SCardStatus( object->hCard, (LPTSTR) NULL, &dwReaderLen, 
+             &dwState, &dwProt, NULL, &dwAtrLen );
+ 
+   if ( rv != SCARD_S_SUCCESS )
+@@ -499,8 +499,8 @@
+ static PyObject * pycscobject_pycsc(PyObject *self, PyObject * args, PyObject *keywds)
+ {
+   /* No reader name in args, connect to the first reader */
+-  LPSTR mszReaders = NULL;
+-  LPSTR szRequestedReader = "";
++  LPTSTR mszReaders = NULL;
++  LPTSTR szRequestedReader = "";
+   DWORD dwReaders;
+   DWORD dwMode = SCARD_SHARE_SHARED;
+   DWORD eProtocol;   /* effective protocol */
+@@ -611,8 +611,8 @@
+ static PyObject * pycscobject_listReader(PyObject *self, PyObject * args)
+ {
+   SCARDCONTEXT  hContext;
+-  LPSTR mszReaders = NULL;
+-  LPSTR mszReadersScan;
++  LPTSTR mszReaders = NULL;
++  LPTSTR mszReadersScan;
+   DWORD dwReaders;
+   LONG rv;
+ 
+@@ -941,10 +941,10 @@
+ }
+ 
+ /* Internal tool */
+-static LONG getReaderList(SCARDCONTEXT hContext, LPSTR* pmszReaders, DWORD *pdwReaders)
++static LONG getReaderList(SCARDCONTEXT hContext, LPTSTR* pmszReaders, DWORD *pdwReaders)
+ {
+-  LPCSTR mszGroups = 0;
+-  LPSTR mszReaders = NULL;
++  LPCTSTR mszGroups = 0;
++  LPTSTR mszReaders = NULL;
+   LONG  dwReaders;
+   LONG rv;
+ 
+diff -u pycsc-0.0.3_/setup.py pycsc-0.0.3/setup.py
+--- pycsc-0.0.3_/setup.py	2004-01-19 17:09:32.000000000 +0100
++++ pycsc-0.0.3/setup.py	2006-05-03 04:48:34.000000000 +0200
+@@ -31,7 +31,7 @@
+          include = []
+     else:
+          libs = ["pcsclite"]
+-         include = ["/usr/include/pcsc"]
++         include = ["/usr/include/PCSC"]
+ 
+ 
+ setup(name="pycsc", version="0.3",

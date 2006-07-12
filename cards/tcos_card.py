@@ -6,7 +6,7 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
     DRIVER_NAME = "TCOS"
     
     ATRS = [
-            ("3bba96008131865d0064057b0203318090007d", None),
+            ("3bba96008131865d0064........31809000..", None),
         ]
     
     COMMANDS = {

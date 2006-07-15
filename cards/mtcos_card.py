@@ -197,3 +197,5 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
             0x83: (decode_83, "Cryptographic algorithm and allowed applications OR Default key reference"),
         }
     }
+    TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
+

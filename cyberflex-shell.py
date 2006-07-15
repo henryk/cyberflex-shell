@@ -26,7 +26,7 @@ class Cyberflex_Shell(Shell):
                 continue
             
             if not doit:
-                print "?? %s", line.strip()
+                print "?? %s" % line.strip()
                 print "Execute? (Yes/No/All/Exit) ",
                 answer = sys.stdin.readline()
                 if answer[0].lower() in ('y', "\n"):

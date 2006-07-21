@@ -61,9 +61,18 @@ class Card:
         """Reset the card."""
         self.card.reconnect(init=pycsc.SCARD_RESET_CARD)
     
-    def cmd_parsetlv(self):
-        "Decode the TLV data in the last response"
-        print TLV_utils.decode(self.last_result.data, tags=self.TLV_OBJECTS)
+    def cmd_parsetlv(self, start = None, end = None):
+        "Decode the TLV data in the last response, start and end are optional"
+        lastlen = len(self.last_result.data)
+        if start is not None:
+            start = (lastlen + (int(start,0) % lastlen) ) % lastlen
+        else:
+            start = 0
+        if end is not None:
+            end = (lastlen + (int(end,0) % lastlen) ) % lastlen
+        else:
+            end = lastlen
+        print TLV_utils.decode(self.last_result.data[start:end], tags=self.TLV_OBJECTS)
     
     COMMANDS = {
         "reset": cmd_reset,

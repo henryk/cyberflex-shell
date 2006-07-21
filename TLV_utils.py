@@ -175,6 +175,22 @@ def decode_generalized_time(value):
         
         return "".join(result)
 
+def decode_bit_string(value):
+    unused_len = ord(value[0])
+    value = value[1:]
+    result = []
+    
+    for i in range(len(value)):
+        v = ord(value[i])
+        l = 8
+        if i == len(value)-1:
+            l = l - unused_len
+        for j in range(l):
+            result.append( (v & 0x80) >> 7 )
+            v = v << 1
+    
+    return " '%s'B" % "".join([str(e) for e in result])
+
 def decode_lcs(value):
     value = ord(value[0])
     return " 0x%02x\n%s" % (value, "\n".join(
@@ -186,10 +202,11 @@ tags = {
     None: {
         0x01: (lambda a: ord(a[0]) == 0 and " False" or " True", "Boolean"),
         0x02: (number, "Integer"),
-        0x03: (binary, "Bit string"),
+        0x03: (decode_bit_string, "Bit string"),
         0x04: (binary, "Octet string"),
         0x05: (lambda a: " Null", "Null"),
         0x06: (decode_oid, "Object identifier"),
+        0x0A: (number, "Enumerated"),
         0x12: (ascii, "Numeric string"),
         0x13: (ascii, "Printable string"),
         0x14: (ascii, "Teletex string"), ## FIXME: support escape sequences?

@@ -87,6 +87,7 @@ class Shell:
                 break
             except KeyboardInterrupt:
                 print ## only clear the current command
+		continue
             
             try:
                 self.parse_and_execute(line)

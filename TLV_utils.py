@@ -178,7 +178,7 @@ def decode_generalized_time(value):
 def decode_bit_string(value):
     unused_len = ord(value[0])
     value = value[1:]
-    result = []
+    bits = []
     
     for i in range(len(value)):
         v = ord(value[i])
@@ -186,10 +186,32 @@ def decode_bit_string(value):
         if i == len(value)-1:
             l = l - unused_len
         for j in range(l):
-            result.append( (v & 0x80) >> 7 )
+            bits.append( (v & 0x80) >> 7 )
             v = v << 1
     
-    return " '%s'B" % "".join([str(e) for e in result])
+    def do_some_bits(slice):
+        result = []
+        for index, bit in enumerate(slice):
+            if index % 4 == 0:
+                result.append(" ")
+            if index % 8 == 0:
+                result.append(" ")
+            result.append(str(bit))
+        return result
+
+    if len(bits) <= 16:
+        return " '%s'B" % "".join(do_some_bits(bits)).strip()
+    else:
+        step = 32
+        result = []
+        head, tail = bits[:step], bits[step:]
+        offset = 0
+        while offset == 0 or len(tail) > 0:
+            result.append("%05x:  %s" % (offset, "".join(do_some_bits(head)).strip()))
+            offset += step
+            head, tail = tail[:step], tail[step:]
+        return "\n" + "\n".join(result)
+    
 
 def decode_lcs(value):
     value = ord(value[0])
@@ -200,7 +222,7 @@ def decode_lcs(value):
 
 tags = {
     None: {
-        0x01: (lambda a: ord(a[0]) == 0 and " False" or " True", "Boolean"),
+        0x01: (lambda a: (len(a) > 0 and ord(a[0]) != 0) and " True" or " False", "Boolean"),
         0x02: (number, "Integer"),
         0x03: (decode_bit_string, "Bit string"),
         0x04: (binary, "Octet string"),

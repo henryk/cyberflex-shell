@@ -274,22 +274,21 @@ def tlv_unpack(data):
     data = data[1:]
     if (tag & 0x1F) == 0x1F:
         tag = (tag << 8) | ord(data[0])
-        data = data[1:]
         while ord(data[0]) & 0x80 == 0x80:
-            tag = tag << 8 + ord(data[0])
             data = data[1:]
+            tag = (tag << 8) | ord(data[0])
+        data = data[1:]
     
     length = ord(data[0])
     if length < 0x80:
         data = data[1:]
-    elif length == 0x81:
-        length = ord(data[1])
-        data = data [2:]
-    elif length == 0x82:
-        length = ord(data[1]) * 256 + ord(data[2])
-        data = data[3:]
-    else:
-        raise ValueError, "Invalid TLV length field"
+    elif length & 0x80 == 0x80:
+	length_ = 0
+	data = data[1:]
+	for i in range(0,length & 0x7F):
+	    length_ = length_ * 256 + ord(data[0])
+	    data = data[1:]
+	length = length_
     
     value = data[:length]
     rest = data[length:]

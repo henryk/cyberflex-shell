@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2006-07-18, 13:42:27 -->
+<!-- Saved: 2006-07-24, 17:00:49 -->
 <!-- Copyright (C) 2006 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>

@@ -9,6 +9,7 @@ from the generic_card.Card class."""
 from sys import modules as _modules
 from dircache import listdir as _listdir
 from new import classobj as _classobj
+import inspect as _inspect
 
 for filename in _listdir(_modules[__name__].__path__[0]):
     if filename[-3:].lower() == ".py":
@@ -144,10 +145,14 @@ class Cardmultiplexer:
     def _merge_attributes(self):
         """Update the local copy of merged attributes."""
         
+        is_descendant = lambda a,b: b in _inspect.getmro(a)
+        ordered_classes = list(self._classes)
+        ordered_classes.sort(cmp=lambda a,b: (a!=b and ( is_descendant(a,b) and 1 or -1 ) or 0))
+        
         for attr in self.MERGE_DICTS + self.MERGE_DICTS_RECURSIVE:
             tmpdict = {}
             have_one = False
-            for cls in self._classes:
+            for cls in ordered_classes:
                 if hasattr(cls, attr):
                     if not attr in self.MERGE_DICTS_RECURSIVE:
                         tmpdict.update( getattr(cls, attr) )

@@ -20,6 +20,7 @@ class Cyberflex_Shell(Shell):
         fh = file(filename)
         
         doit = False
+        ignored_SWs = []
         
         for line in fh:
             if line[:2] == "//" or line[:1] == "#":
@@ -42,13 +43,18 @@ class Cyberflex_Shell(Shell):
             
             self.parse_and_execute(line)
             
-            if self.card.sw_changed and self.card.last_sw != self.card.SW_OK:
+            if self.card.sw_changed and self.card.last_sw != self.card.SW_OK \
+                    and self.card.last_sw not in ignored_SWs:
+                
                 print "SW was not %s. Ignore (i) or Abort (a)? " % binascii.hexlify(self.card.SW_OK),
                 answer = sys.stdin.readline()
                 if answer[0].lower() in ('i', "\n"):
                     pass
                 elif answer[0].lower() == 'a':
                     return
+                elif answer[0] == 'S':
+                    ignored_SWs.append(self.card.last_sw)
+                    pass
                 else:
                     return
     

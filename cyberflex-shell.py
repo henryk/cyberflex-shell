@@ -160,7 +160,7 @@ class Cyberflex_Shell(Shell):
         
         apdu_string = stack[0]
         
-        if apdu_head.strip != "":
+        if apdu_head.strip() != "":
             l = len("".join(stack[0].split()))
             assert l % 2 == 0
             l = l/2
@@ -305,7 +305,7 @@ class Cyberflex_Shell(Shell):
     NOCARD_COMMANDS = {
         "connect": cmd_connect,
     }
-    
+
 OPTIONS = "r:l"
 LONG_OPTIONS = ["reader=", "list-readers"]
 exit_now = False

@@ -4,6 +4,7 @@ from generic_card import *
 class ISO_7816_4_Card(Card):
     APDU_SELECT_FILE = C_APDU("\x00\xa4\x00\x00")
     APDU_READ_BINARY = C_APDU("\x00\xb0\x00\x00\x00")
+    APDU_READ_RECORD = C_APDU("\x00\xb2\x00\x00\x00")
     DRIVER_NAME = "ISO 7816-4"
     FID_MF = "\x3f\x00"
     
@@ -77,11 +78,26 @@ class ISO_7816_4_Card(Card):
         
         return contents
     
+    def read_record(self, p1 = 0, p2 = 0, le = 0):
+        "Read a record from the currently selected file"
+        command = C_APDU(self.APDU_READ_RECORD, p1 = p1, p2 = p2, le = le)
+        result = self.send_apdu(command)
+        return result.data
+    
     def cmd_cat(self):
         "Print a hexdump of the currently selected file (e.g. consecutive READ BINARY)"
         contents = self.read_binary_file()
         self.last_result = R_APDU(contents + self.last_sw)
         print utils.hexdump(contents)
+    
+    def cmd_read_record(self, p1 = 0, p2 = 0, le = 0):
+        "Read a record"
+        contents = self.read_record(p1 = p1, p2 = p2, le = le)
+        print utils.hexdump(contents)
+    
+    def cmd_next_record(self, le = 0):
+        "Read the next record"
+        return self.cmd_read_record(p1 = 0, p2 = 2, le = le)
     
     def cmd_selectfile(self, p1, p2, fid):
         """Select a file on the card."""
@@ -106,6 +122,8 @@ class ISO_7816_4_Card(Card):
         "cd": cmd_cd,
         "cat": cmd_cat,
         "open": cmd_open,
+        "read_record": cmd_read_record,
+        "next_record": cmd_next_record,
         } )
 
     STATUS_WORDS = dict(Card.STATUS_WORDS)

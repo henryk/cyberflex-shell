@@ -71,6 +71,24 @@ class Cyberflex_Shell(Shell):
         """Print the ATR of the currently inserted card."""
         print "ATR: %s" % utils.hexdump(self.card.card.status()['ATR'], short=True)
     
+    def cmd_save_response(self, file_name, start = None, end = None):
+        "Save the data in the last response to a file. start and end are optional"
+        lastlen = len(self.card.last_result.data)
+        if start is not None:
+            start = (lastlen + (int(start,0) % lastlen) ) % lastlen
+        else:
+            start = 0
+        if end is not None:
+            end = (lastlen + (int(end,0) % lastlen) ) % lastlen
+        else:
+            end = lastlen
+        
+        fp = file(file_name, "w")
+        try:
+            fp.write(self.card.last_result.data[start:end])
+        finally:
+            fp.close()
+    
     def cmd_disconnect(self, *args):
         "Close the connection to the currently inserted card"
         self.unregister_post_hook(self._print_sw)
@@ -93,11 +111,79 @@ class Cyberflex_Shell(Shell):
 
     def _clear_sw(self):
         self.card.sw_changed = False
-
+    
+    _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|\)|\()\s*)*$', re.I)
+    @staticmethod
+    def parse_fancy_apdu(*args):
+        apdu_string = " ".join(args)
+        if not Cyberflex_Shell._fancyapduregex.match(apdu_string):
+            raise NotImplementedError
+        
+        apdu_string = apdu_string.lower()
+        have_le = False
+        pos = apdu_string.find("xx")
+        if pos == -1:
+            pos = apdu_string.find("yy")
+            have_le = True
+        
+        apdu_head = ""
+        apdu_tail = apdu_string
+        if pos != -1:
+            apdu_head = apdu_string[:pos]
+            apdu_tail = apdu_string[pos+2:]
+        
+        if apdu_head.strip() != "" and not Cyberflex_Shell._apduregex.match(apdu_head):
+            raise NotImplementedError
+        
+        stack = [""]
+        for char in apdu_tail:
+            if char in (" ", "a", "b", "c", "d", "e", "f") or char.isdigit():
+                stack[-1] = stack[-1] + char
+            elif char == ")":
+                if len(stack) == 1:
+                    raise NotImplementedError
+                else: 
+                    inner_content = stack.pop()
+                    l = len("".join(inner_content.split()))
+                    assert l % 2 == 0
+                    l = l/2
+                    formatted_len = "%02x" % l  ## FIXME len > 255?
+                    stack[-1] = stack[-1] + " " + formatted_len + " " + inner_content
+            elif char == "(":
+                stack.append("")
+            else:
+                raise NotImplementedError
+        
+        if len(stack) > 1:
+            raise NotImplementedError
+        
+        
+        apdu_string = stack[0]
+        
+        if apdu_head.strip != "":
+            l = len("".join(stack[0].split()))
+            assert l % 2 == 0
+            l = l/2
+            if have_le: 
+                l = l - 1 ## FIXME Le > 255?
+            formatted_len = "%02x" % l  ## FIXME len > 255?
+            apdu_string = apdu_head + " " + formatted_len + " " + stack[0]
+        
+        return apdu_string
+    
+    def do_fancy_apdu(self, *args):
+        apdu_string = None
+        try:
+            apdu_string = Cyberflex_Shell.parse_fancy_apdu(*args)
+        except ValueError:
+            raise NotImplementedError
+        
+        return self.do_raw_apdu(apdu_string)
+    
     _apduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}$', re.I)
     def do_raw_apdu(self, *args):
         apdu_string = "".join(args)
-        if not self._apduregex.match(apdu_string):
+        if not Cyberflex_Shell._apduregex.match(apdu_string):
             raise NotImplementedError
         
         apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
@@ -196,7 +282,7 @@ class Cyberflex_Shell(Shell):
         self.register_pre_hook(self._update_prompt)
         self.register_pre_hook(self._clear_sw)
         
-        shell.fallback = self.do_raw_apdu
+        shell.fallback = self.do_fancy_apdu
         
         shell.register_post_hook(self._print_sw)
     
@@ -204,6 +290,7 @@ class Cyberflex_Shell(Shell):
     COMMANDS.update( {
         "list_readers": cmd_listreaders,
         "eval": cmd_eval,
+        "save_response": cmd_save_response,
     } )
     
     CARD_COMMANDS = {
@@ -219,7 +306,6 @@ class Cyberflex_Shell(Shell):
         "connect": cmd_connect,
     }
     
-
 OPTIONS = "r:l"
 LONG_OPTIONS = ["reader=", "list-readers"]
 exit_now = False

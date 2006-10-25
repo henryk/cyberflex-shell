@@ -123,7 +123,7 @@ class Cyberflex_Shell(Shell):
     def parse_fancy_apdu(*args):
         apdu_string = " ".join(args)
         if not Cyberflex_Shell._fancyapduregex.match(apdu_string):
-            raise NotImplementedError
+            raise ValueError
         
         apdu_string = apdu_string.lower()
         have_le = False
@@ -139,7 +139,7 @@ class Cyberflex_Shell(Shell):
             apdu_tail = apdu_string[pos+2:]
         
         if apdu_head.strip() != "" and not Cyberflex_Shell._apduregex.match(apdu_head):
-            raise NotImplementedError
+            raise ValueError
         
         stack = [""]
         for char in apdu_tail:
@@ -147,7 +147,7 @@ class Cyberflex_Shell(Shell):
                 stack[-1] = stack[-1] + char
             elif char == ")":
                 if len(stack) == 1:
-                    raise NotImplementedError
+                    raise ValueError
                 else: 
                     inner_content = stack.pop()
                     l = len("".join(inner_content.split()))
@@ -158,10 +158,10 @@ class Cyberflex_Shell(Shell):
             elif char == "(":
                 stack.append("")
             else:
-                raise NotImplementedError
+                raise ValueError
         
         if len(stack) > 1:
-            raise NotImplementedError
+            raise ValueError
         
         
         apdu_string = stack[0]

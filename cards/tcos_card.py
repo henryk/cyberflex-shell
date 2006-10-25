@@ -159,7 +159,7 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
             elif len(secrets) == 1:
                 partresponse.append(" needs " + secrets[0])
             elif len(secrets) == 0:
-                partresponse.append(" is always allowed")
+                partresponse.append(" always allowed")
             
             def decode_key(value):
                 partresponse.append( (value&0x80) and "local" or "global" )

@@ -106,6 +106,12 @@ class Cyberflex_Shell(Shell):
         self.cmd_disconnect()
         self.cmd_connect(reader)
     
+    def cmd_fancy(self, *args):
+        "Parse a fancy APDU and print the result"
+        data = binascii.a2b_hex("".join(self.parse_fancy_apdu(*args).split()))
+        self.card.last_result = utils.R_APDU(data+"\x00\x00")
+        print utils.hexdump(data)
+    
     def _update_prompt(self):
         self.set_prompt(self.card.get_prompt() + " ")
 
@@ -291,6 +297,7 @@ class Cyberflex_Shell(Shell):
         "list_readers": cmd_listreaders,
         "eval": cmd_eval,
         "save_response": cmd_save_response,
+        "fancy": cmd_fancy,
     } )
     
     CARD_COMMANDS = {

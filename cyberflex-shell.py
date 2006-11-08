@@ -62,6 +62,93 @@ class Cyberflex_Shell(Shell):
         "List the available readers"
         list_readers()
     
+    @staticmethod
+    def cipher(do_encrypt, cipherspec, key, data, iv = None):
+        from Crypto.Cipher import DES3, DES, AES, IDEA, RC5
+        cipherparts = cipherspec.split("-")
+        
+        if len(cipherparts) > 2:
+            raise ValueError, 'cipherspec must be of the form "cipher-mode" or "cipher"'
+        elif len(cipherparts) == 1:
+            cipherparts[1] = "ecb"
+        
+        c_class = locals().get(cipherparts[0].upper(), None)
+        if c_class is None: 
+            raise ValueError, "Cipher '%s' not known, must be one of %s" % (cipherparts[0], ", ".join([e.lower() for e in dir() if e.isupper()]))
+        
+        mode = getattr(c_class, "MODE_" + cipherparts[1].upper(), None)
+        if mode is None:
+            raise ValueError, "Mode '%s' not known, must be one of %s" % (cipherparts[1], ", ".join([e.split()[1].lower() for e in dir(c_class) if e.startswith("MODE_")]))
+        
+        cipher = None
+        if iv is None:
+            cipher = c_class.new(key, mode)
+        else:
+            cipher = c_class.new(key, mode, iv)
+            
+        
+        result = None
+        if do_encrypt:
+            result = cipher.encrypt(data)
+        else:
+            result = cipher.decrypt(data)
+        
+        del cipher
+        return result
+    
+    def cmd_enc(self, *args):
+        "Encrypt or decrypt with openssl-like interface"
+        
+        args = list(args)
+        print args
+        
+        MODE_DECRYPT = "-d"
+        MODE_ENCRYPT = "-e"
+        mode = MODE_ENCRYPT
+        if "-e" in args:
+            mode = MODE_ENCRYPT
+        
+        input = None
+        if "-in" in args:
+            i = args.index("-in")
+            input = args[i+1]
+        
+        if "-K" not in args:
+            raise ValueError, "Must specify key with -K"
+        i = args.index("-K")
+        key = args[i+1]
+        key = binascii.a2b_hex("".join(key.split()))
+        
+        iv = None
+        if "-iv" in args:
+            i = args.index("-iv")
+            iv = args[i+1]
+        
+        cipher = "des"
+        if args[0][0] != "-":
+            cipher = args[0]
+        
+        text = None
+        if "-text" in args:
+            if input is not None:
+                raise ValueError, "Can't give -in and -text"
+            i = args.index("-text")
+            text = binascii.a2b_hex("".join(args[i+1].split()))
+        
+        if text is None:
+            if input is None:
+                text = self.card.last_result.data
+            else:
+                fp = file(input)
+                text = fp.read()
+                fp.close()
+        
+        result = self.cipher(mode == MODE_ENCRYPT, cipher, key, text, iv)
+        
+        self.card.last_result = utils.R_APDU(result+"\x00\x00")
+        print utils.hexdump(result)
+    
+    
     def cmd_eval(self, *args):
         "Execute raw python code"
         eval(" ".join(args))
@@ -298,6 +385,7 @@ class Cyberflex_Shell(Shell):
         "eval": cmd_eval,
         "save_response": cmd_save_response,
         "fancy": cmd_fancy,
+        "enc": cmd_enc,
     } )
     
     CARD_COMMANDS = {

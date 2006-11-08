@@ -103,7 +103,7 @@ class Shell:
                     traceback.print_tb(sys.exc_info()[2])
     
     _commandregex = re.compile(r'\s*(\w+)(\s+.*)?')
-    _argumentregex = re.compile(r"""\s*(?:"((?:[^"]|\"|\\)*)"|'([^']*)'|(\S+))(\s+\S.*)?""")
+    _argumentregex = re.compile(r"""\s*(?:"((?:[^"]|\\"|\\\\)*)"|'([^']*)'|(\S+))(\s+\S.*)?""")
     def parse_and_execute(self, line):
         """Parses a command line and executes the associated function."""
         match = self._commandregex.match(line)

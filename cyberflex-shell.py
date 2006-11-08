@@ -78,7 +78,7 @@ class Cyberflex_Shell(Shell):
         
         mode = getattr(c_class, "MODE_" + cipherparts[1].upper(), None)
         if mode is None:
-            raise ValueError, "Mode '%s' not known, must be one of %s" % (cipherparts[1], ", ".join([e.split()[1].lower() for e in dir(c_class) if e.startswith("MODE_")]))
+            raise ValueError, "Mode '%s' not known, must be one of %s" % (cipherparts[1], ", ".join([e.split("_")[1].lower() for e in dir(c_class) if e.startswith("MODE_")]))
         
         cipher = None
         if iv is None:
@@ -100,13 +100,12 @@ class Cyberflex_Shell(Shell):
         "Encrypt or decrypt with openssl-like interface"
         
         args = list(args)
-        print args
         
         MODE_DECRYPT = "-d"
         MODE_ENCRYPT = "-e"
         mode = MODE_ENCRYPT
-        if "-e" in args:
-            mode = MODE_ENCRYPT
+        if "-d" in args:
+            mode = MODE_DECRYPT
         
         input = None
         if "-in" in args:
@@ -123,6 +122,7 @@ class Cyberflex_Shell(Shell):
         if "-iv" in args:
             i = args.index("-iv")
             iv = args[i+1]
+            iv = binascii.a2b_hex("".join(iv.split()))
         
         cipher = "des"
         if args[0][0] != "-":

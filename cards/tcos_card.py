@@ -4,16 +4,11 @@ import building_blocks
 
 class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
     DRIVER_NAME = "TCOS"
+    APDU_DELETE_FILE = C_APDU("\x80\xe4\x00\x00")
     
     ATRS = [
             ("3bba96008131865d0064........31809000..", None),
         ]
-    
-    COMMANDS = {
-        "list_dirs": building_blocks.Card_with_80_aa.cmd_listdirs,
-        "list_files": building_blocks.Card_with_80_aa.cmd_listfiles,
-        "ls": building_blocks.Card_with_80_aa.cmd_list,
-        }
     
     file_status_descriptions = (
         (0xF9, 0x01, None, "Not invalidated"),
@@ -199,6 +194,18 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         
         return "\n".join(results)
 
+    def delete_file(self, fid):
+        result = self.send_apdu(
+            C_APDU(self.APDU_DELETE_FILE, data = fid) 
+        )
+        return result
+
+    def cmd_delete(self, file):
+        "Delete a file"
+        fid = binascii.a2b_hex("".join(file.split()))
+        
+        self.delete_file(fid)
+
     TLV_OBJECTS = {
         TLV_utils.context_FCP: {
             0x86: (decode_security_attributes, "Security attributes"),
@@ -206,3 +213,11 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         },
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
+
+    COMMANDS = {
+        "list_dirs": building_blocks.Card_with_80_aa.cmd_listdirs,
+        "list_files": building_blocks.Card_with_80_aa.cmd_listfiles,
+        "ls": building_blocks.Card_with_80_aa.cmd_list,
+        "delete": cmd_delete,
+        }
+    

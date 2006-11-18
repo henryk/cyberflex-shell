@@ -195,7 +195,8 @@ class Cyberflex_Shell(Shell):
     
     def cmd_fancy(self, *args):
         "Parse a fancy APDU and print the result"
-        data = binascii.a2b_hex("".join(self.parse_fancy_apdu(*args).split()))
+        apdu = self.parse_fancy_apdu(*args)
+        data = apdu.render()
         self.card.last_result = utils.R_APDU(data+"\x00\x00")
         print utils.hexdump(data)
     
@@ -262,16 +263,20 @@ class Cyberflex_Shell(Shell):
             formatted_len = "%02x" % l  ## FIXME len > 255?
             apdu_string = apdu_head + " " + formatted_len + " " + stack[0]
         
-        return apdu_string
+        apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
+        apdu = utils.C_APDU(apdu_binary)
+        
+        return apdu
     
     def do_fancy_apdu(self, *args):
-        apdu_string = None
+        apdu = None
         try:
-            apdu_string = Cyberflex_Shell.parse_fancy_apdu(*args)
+            apdu = Cyberflex_Shell.parse_fancy_apdu(*args)
         except ValueError:
             raise NotImplementedError
         
-        return self.do_raw_apdu(apdu_string)
+        if apdu is not None:
+            return self.do_apdu(apdu)
     
     _apduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}$', re.I)
     def do_raw_apdu(self, *args):
@@ -281,6 +286,10 @@ class Cyberflex_Shell(Shell):
         
         apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
         apdu = utils.C_APDU(apdu_binary)
+        
+        return self.do_apdu(apdu)
+    
+    def do_apdu(apdu):
         response = self.card.send_apdu(apdu)
         
         if len(response.data) > 0: ## The SW is already printed by _print_sw as a post_hook

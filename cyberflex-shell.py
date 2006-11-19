@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import pycsc, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt
+import pycsc, crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt
 from shell import Shell
 
 def list_readers():
@@ -62,40 +62,6 @@ class Cyberflex_Shell(Shell):
         "List the available readers"
         list_readers()
     
-    @staticmethod
-    def cipher(do_encrypt, cipherspec, key, data, iv = None):
-        from Crypto.Cipher import DES3, DES, AES, IDEA, RC5
-        cipherparts = cipherspec.split("-")
-        
-        if len(cipherparts) > 2:
-            raise ValueError, 'cipherspec must be of the form "cipher-mode" or "cipher"'
-        elif len(cipherparts) == 1:
-            cipherparts[1] = "ecb"
-        
-        c_class = locals().get(cipherparts[0].upper(), None)
-        if c_class is None: 
-            raise ValueError, "Cipher '%s' not known, must be one of %s" % (cipherparts[0], ", ".join([e.lower() for e in dir() if e.isupper()]))
-        
-        mode = getattr(c_class, "MODE_" + cipherparts[1].upper(), None)
-        if mode is None:
-            raise ValueError, "Mode '%s' not known, must be one of %s" % (cipherparts[1], ", ".join([e.split("_")[1].lower() for e in dir(c_class) if e.startswith("MODE_")]))
-        
-        cipher = None
-        if iv is None:
-            cipher = c_class.new(key, mode)
-        else:
-            cipher = c_class.new(key, mode, iv)
-            
-        
-        result = None
-        if do_encrypt:
-            result = cipher.encrypt(data)
-        else:
-            result = cipher.decrypt(data)
-        
-        del cipher
-        return result
-    
     def cmd_enc(self, *args):
         "Encrypt or decrypt with openssl-like interface"
         
@@ -143,7 +109,7 @@ class Cyberflex_Shell(Shell):
                 text = fp.read()
                 fp.close()
         
-        result = self.cipher(mode == MODE_ENCRYPT, cipher, key, text, iv)
+        result = crypto_utils.cipher(mode == MODE_ENCRYPT, cipher, key, text, iv)
         
         self.card.last_result = utils.R_APDU(result+"\x00\x00")
         print utils.hexdump(result)

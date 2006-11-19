@@ -206,7 +206,7 @@ class Cyberflex_Shell(Shell):
     def _clear_sw(self):
         self.card.sw_changed = False
     
-    _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|\)|\()\s*)*$', re.I)
+    _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|\)|\(|\[|\])\s*)*$', re.I)
     @staticmethod
     def parse_fancy_apdu(*args):
         apdu_string = " ".join(args)
@@ -229,43 +229,103 @@ class Cyberflex_Shell(Shell):
         if apdu_head.strip() != "" and not Cyberflex_Shell._apduregex.match(apdu_head):
             raise ValueError
         
-        stack = [""]
-        for char in apdu_tail:
+        class Node(list):
+            def __init__(self, parent = None, type = None):
+                list.__init__(self)
+                self.parent = parent
+                self.type = type
+            
+            def make_binary(self):
+                "Recursively transform hex strings to binary"
+                for index, child in enumerate(self):
+                    if isinstance(child,str):
+                        child = "".join(child.split())
+                        assert len(child) % 2 == 0
+                        self[index] = binascii.a2b_hex(child)
+                    else:
+                        child.make_binary()
+            
+            def calculate_lengths(self):
+                "Recursively calculate lengths and insert length counts"
+                self.length = 0
+                index = 0
+                while index < len(self): ## Can't use enumerate() due to the insert() below
+                    child = self[index]
+                    
+                    if isinstance(child,str):
+                        self.length = self.length + len(child)
+                    else:
+                        child.calculate_lengths()
+                        
+                        formatted_len = binascii.a2b_hex("%02x" % child.length) ## FIXME len > 255?
+                        self.length = self.length + len(formatted_len) + child.length
+                        self.insert(index, formatted_len)
+                        index = index + 1
+                    
+                    index = index + 1
+            
+            def flatten(self, offset = 0, ignore_types=["("]):
+                "Recursively flatten, gather list of marks"
+                string_result = []
+                mark_result = []
+                for child in self:
+                    if isinstance(child,str):
+                        string_result.append(child)
+                        offset = offset + len(child)
+                    else:
+                        start = offset
+                        child_string, child_mark = child.flatten(offset, ignore_types)
+                        string_result.append(child_string)
+                        offset = end = offset + len(child_string)
+                        mark_result.append( (child.type, start, end) )
+                        mark_result.extend(child_mark)
+                
+                return "".join(string_result), mark_result
+        
+        
+        tree = Node()
+        current = tree
+        allowed_parens = {"(": ")", "[":"]"}
+        
+        for pos,char in enumerate(apdu_tail):
             if char in (" ", "a", "b", "c", "d", "e", "f") or char.isdigit():
-                stack[-1] = stack[-1] + char
-            elif char == ")":
-                if len(stack) == 1:
+                if len(current) > 0 and isinstance(current[-1],str):
+                    current[-1] = current[-1] + char
+                else:
+                    current.append(str(char))
+                
+            elif char in allowed_parens.values():
+                if current.parent is None:
                     raise ValueError
-                else: 
-                    inner_content = stack.pop()
-                    l = len("".join(inner_content.split()))
-                    assert l % 2 == 0
-                    l = l/2
-                    formatted_len = "%02x" % l  ## FIXME len > 255?
-                    stack[-1] = stack[-1] + " " + formatted_len + " " + inner_content
-            elif char == "(":
-                stack.append("")
+                if allowed_parens[current.type] != char:
+                    raise ValueError
+                
+                current = current.parent
+                
+            elif char in allowed_parens.keys():
+                current.append( Node(current, char) )
+                current = current[-1]
+                
             else:
                 raise ValueError
         
-        if len(stack) > 1:
+        if current != tree:
             raise ValueError
         
+        tree.make_binary()
+        tree.calculate_lengths()
         
-        apdu_string = stack[0]
-        
-        if apdu_head.strip() != "":
-            l = len("".join(stack[0].split()))
-            assert l % 2 == 0
-            l = l/2
+        apdu_head = apdu_head.strip()
+        if apdu_head != "":
+            l = tree.length
             if have_le: 
                 l = l - 1 ## FIXME Le > 255?
             formatted_len = "%02x" % l  ## FIXME len > 255?
-            apdu_string = apdu_head + " " + formatted_len + " " + stack[0]
+            apdu_head = binascii.a2b_hex("".join( (apdu_head + formatted_len).split() ))
         
-        apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
-        apdu = utils.C_APDU(apdu_binary)
+        apdu_tail, marks = tree.flatten(offset=len(apdu_head))
         
+        apdu = utils.C_APDU(apdu_head + apdu_tail, marks = marks)
         return apdu
     
     def do_fancy_apdu(self, *args):

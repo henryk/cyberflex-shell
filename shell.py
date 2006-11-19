@@ -74,20 +74,30 @@ class Shell:
         not (normally) return."""
         
         line = ""
+        lines = []
+        try:
+            fp = file(os.path.join(os.environ["HOME"], ".%src" % self.basename))
+            lines = fp.readlines()
+            fp.close()
+        except IOError:
+            pass
         
         while True:
             try:
                 for function in self.pre_hook:
                     function()
                 
-                line = raw_input("%s> " % self.prompt)
+                if len(lines) > 0:
+                    line = lines.pop(0)
+                else:
+                    line = raw_input("%s> " % self.prompt)
                 
             except EOFError:
                 print ## line break (there probably was none after the prompt)
                 break
             except KeyboardInterrupt:
                 print ## only clear the current command
-		continue
+                continue
             
             try:
                 self.parse_and_execute(line)

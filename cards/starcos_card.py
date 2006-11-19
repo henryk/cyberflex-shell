@@ -3,7 +3,7 @@ from iso_7816_4_card import *
 
 class Starcos_Card(ISO_7816_4_Card):
     DRIVER_NAME = "Starcos"
-    APDU_READ_BINARY = C_APDU("\x00\xb0\x00\x00\xfe")
+    APDU_READ_BINARY = C_APDU(ins=0xb0,le=0xfe)
     
     def change_dir(self, fid = None):
         "Change to a child DF. Alternatively, change to MF if fid is None."

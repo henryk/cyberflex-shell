@@ -2,9 +2,9 @@ import TLV_utils
 from generic_card import *
 
 class ISO_7816_4_Card(Card):
-    APDU_SELECT_FILE = C_APDU("\x00\xa4\x00\x00")
-    APDU_READ_BINARY = C_APDU("\x00\xb0\x00\x00\x00")
-    APDU_READ_RECORD = C_APDU("\x00\xb2\x00\x00\x00")
+    APDU_SELECT_FILE = C_APDU(ins=0xa4)
+    APDU_READ_BINARY = C_APDU(ins=0xb0,le=0)
+    APDU_READ_RECORD = C_APDU(ins=0xb2,le=0)
     DRIVER_NAME = "ISO 7816-4"
     FID_MF = "\x3f\x00"
     

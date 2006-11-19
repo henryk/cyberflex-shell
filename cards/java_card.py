@@ -3,7 +3,7 @@ from generic_card import *
 from utils import C_APDU
 
 class Java_Card(Card):
-    APDU_SELECT_APPLICATION = C_APDU("\x00\xa4\x04\x00")
+    APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
     DRIVER_NAME = "Generic Java"
     APPLICATIONS = {
         "muscle": "\xa0\x00\x00\x00\x01\x01"

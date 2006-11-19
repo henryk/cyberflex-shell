@@ -6,8 +6,8 @@ DEBUG = True
 
 class Card:
     DRIVER_NAME = "Generic"
-    APDU_GET_RESPONSE = C_APDU("\x00\xC0\x00\x00")
-    APDU_VERIFY_PIN = C_APDU("\x00\x20\x00\x00")
+    APDU_GET_RESPONSE = C_APDU(ins=0xc0)
+    APDU_VERIFY_PIN = C_APDU(ins=0x20)
     SW_OK = '\x90\x00'
     SW1_RETRY = 0x61 ## If this SW1 is received then GET RESPONSE should be called with SW2
     ## Note: an item in this list must be a tuple of (atr, mask) where atr is a binary

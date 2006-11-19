@@ -315,7 +315,7 @@ class Cyberflex_Shell(Shell):
         
         return self.do_apdu(apdu)
     
-    def do_apdu(apdu):
+    def do_apdu(self, apdu):
         response = self.card.send_apdu(apdu)
         
         if len(response.data) > 0: ## The SW is already printed by _print_sw as a post_hook

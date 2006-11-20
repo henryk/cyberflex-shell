@@ -1,4 +1,4 @@
-import utils
+import utils, re
 from iso_7816_4_card import *
 
 class Postcard_Card(ISO_7816_4_Card):
@@ -44,6 +44,31 @@ class Postcard_Card(ISO_7816_4_Card):
         for name,_ in self.ZONE_ADDRESSES:
             print "%s: %04x" % (name, result[name])
     
+    def cmd_read_identification_zone(self):
+        "Read the identification zone"
+        data = self._get_binary(0x0948, length=0x60)
+        
+        chaine_initiale = binascii.b2a_hex(data[4:])
+        print "chaine initiale", chaine_initiale
+        #suppression_des_3 = re.sub(r'x', '3', re.sub(r'3', '', re.sub(r'33', "x", chaine_initiale) ) )
+        #suppression_des_3 = "".join(chaine_initiale.split("3")) + "0"
+        suppression_des_3 = []
+        still_there = True
+        for index,char in enumerate(chaine_initiale):
+            if still_there and index % 8 == 0:
+                if char == "3":
+                    continue
+                else:
+                    still_there = False
+            suppression_des_3.append(char)
+        suppression_des_3 = "".join(suppression_des_3)
+        
+        print "suppression des 3", suppression_des_3
+        new_data = binascii.a2b_hex(suppression_des_3)
+        print utils.hexdump(new_data)
+        
+    
     COMMANDS = {
         "calculate_zone_addresses": cmd_calculate_zone_addresses,
+        "read_identification_zone": cmd_read_identification_zone,
     }

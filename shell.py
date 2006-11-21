@@ -45,6 +45,7 @@ class Shell:
         self.env = {"print_backtrace": "true"}
         
         self.register_commands(self)
+        self.startup_ran = False
         self.fallback = None
         self.pre_hook = []
         self.post_hook = []
@@ -67,27 +68,37 @@ class Shell:
     def unregister_post_hook(self, function):
         self.post_hook.remove(function)
     
-    
-    
     def run(self):
         """Runs a loop to read commands and execute them. This function does 
         not (normally) return."""
         
-        line = ""
+        if not self.startup_ran:
+            self.run_startup()
+        
+        self._run()
+    
+    def run_startup(self):
         lines = []
+        self.startup_ran = True
         try:
             fp = file(os.path.join(os.environ["HOME"], ".%src" % self.basename))
             lines = fp.readlines()
             fp.close()
         except IOError:
-            pass
+            return
         
-        while True:
+        self._run(lines)
+    
+    def _run(self, lines = None):
+        
+        line = ""
+        
+        while lines is None or len(lines) > 0:
             try:
                 for function in self.pre_hook:
                     function()
                 
-                if len(lines) > 0:
+                if lines is not None and len(lines) > 0:
                     line = lines.pop(0)
                 else:
                     line = raw_input("%s> " % self.prompt)

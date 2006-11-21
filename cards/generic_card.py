@@ -116,6 +116,9 @@ class Card:
         
         result = self._send_with_retry(apdu)
         
+        if hasattr(self, "after_send"):
+            result = self.after_send(result)
+        
         if DEBUG:
             print "Ending transaction %i\n%s\n" % (self._i, '-'*80)
         self._i = self._i + 1

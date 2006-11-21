@@ -2,6 +2,79 @@ import utils, TLV_utils
 from iso_7816_4_card import *
 import building_blocks
 
+MODE_ECB = 0
+MODE_CBC = 1
+ALGO_IDEA = 0x1
+ALGO_DES = 0x2
+ALGO_DES3 = 0x3
+    
+class SE_Config:
+    def __init__(self, config = None, operation = "\xB4"):
+        self.algorithm = None
+        self.mode = MODE_ECB
+        self.keyref = 0
+        self.keytype = 0
+        self.iv = "\x00" * 8
+        if config is not None:
+            self.parse(config)
+    
+    def parse(self, config):
+        structure = TLV_utils.unpack(config)
+        for tag, length, value in structure:
+            if tag == 0x80:
+                self.mode = ord(value[0]) & 1
+                algorithm = (ord(value[0]) >> 2) & 0x7
+                if algorithm not in (ALGO_DES, ALGO_DES3, ALGO_IDEA):
+                    raise ValueError, "Malformed cipher algorithm (tag 0x80)"
+                self.algorithm = algorithm
+            elif tag in (0x83, 0x84):
+                self.keyref = ord(value)
+                self.keytype = tag
+            elif tag == 0x85:
+                self.iv = "\x00" * 8
+            elif tag == 0x87:
+                self.iv = value
+            elif tag == 0x88:
+                self.iv = None ## FIXME
+            else:
+                raise ValueError, "Malformed MSE parameters (tag 0x%02x)" % tag
+
+class TCOS_Security_Environment(object):
+    def __init__(self, card):
+        self.keys = {}
+        self.card = card
+        self.last_c_apdu = None
+        self.last_r_apdu = None
+        self.mso = SE_Config()
+        self.se_apdu = SE_Config()
+        self.se_rapdu = SE_Config()
+    
+    def before_send(self, apdu):
+        self.last_c_apdu = apdu
+        return apdu
+    
+    def after_send(self, result):
+        self.last_r_apdu = result
+        if result.sw == self.card.SW_OK:
+            if (self.last_c_apdu.cla & 0xf0) == 0x00:
+                if self.last_c_apdu.ins == 0x22:
+                    self.parse_mse(self.last_c_apdu)
+        return result
+    
+    def parse_mse(self, apdu):
+        if apdu.p1 & 1 != 1:
+            return
+        
+        if apdu.p1 & 0x10 == 0x10:
+            self.se_apdu = SE_Config(apdu.data, apdu.p2)
+        if apdu.p1 & 0x20 == 0x20:
+            self.se_rapdu = SE_Config(apdu.data, apdu.p2)
+        if apdu.p1 & 0xc0 == 0xc0:
+            self.se_pso = SE_Config(apdu.data, apdu.p2)
+    
+    def set_key(self, keyref, keyvalue):
+        self.keys[keyref] = keyvalue
+
 class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
     DRIVER_NAME = "TCOS"
     APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
@@ -194,6 +267,18 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         
         return "\n".join(results)
 
+    def __init__(self, *args, **kwargs):
+        ISO_7816_4_Card.__init__(self,*args,**kwargs)
+        self.cmd_clear_se()
+    
+    def cmd_clear_se(self):
+        "Reset the host security environment"
+        self.se = TCOS_Security_Environment(self)
+    
+    def cmd_set_key(self, ref, key, *args):
+        "Set a key in the host security environment"
+        self.se.set_key( int(ref,0), binascii.a2b_hex( "".join( (key + "".join(args)).split() ) ) )
+    
     def delete_file(self, fid):
         result = self.send_apdu(
             C_APDU(self.APDU_DELETE_FILE, data = fid) 
@@ -206,6 +291,12 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         
         self.delete_file(fid)
 
+    def before_send(self, apdu):
+        return self.se.before_send(apdu)
+    
+    def after_send(self, result):
+        return self.se.after_send(result)
+    
     TLV_OBJECTS = {
         TLV_utils.context_FCP: {
             0x86: (decode_security_attributes, "Security attributes"),
@@ -219,5 +310,7 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         "list_files": building_blocks.Card_with_80_aa.cmd_listfiles,
         "ls": building_blocks.Card_with_80_aa.cmd_list,
         "delete": cmd_delete,
+        "clear_se": cmd_clear_se,
+        "set_key": cmd_set_key,
         }
     

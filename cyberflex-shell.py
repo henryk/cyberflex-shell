@@ -14,12 +14,13 @@ class Cyberflex_Shell(Shell):
         self.reader = 0
         Shell.__init__(self, basename)
         self.register_commands(self, self.NOCARD_COMMANDS)
+        self.set_prompt("(No card) ")
     
-    def cmd_runscript(self, filename):
+    def cmd_runscript(self, filename, ask = True):
         "Run an APDU script from a file"
         fh = file(filename)
         
-        doit = False
+        doit = not ask
         ignored_SWs = []
         
         for line in fh:
@@ -436,9 +437,28 @@ class Cyberflex_Shell(Shell):
         "connect": cmd_connect,
     }
 
-OPTIONS = "r:l"
-LONG_OPTIONS = ["reader=", "list-readers"]
+def usage():
+    print """Cyberflex shell
+Synopsis: cyberflex-shell.py [options] [scriptfiles]
+Options:
+    -r, --reader             Select the reader to use, either by
+                             index or by name
+    -l, --list-readers       List the available readers and their
+                             indices
+    -n, --dont-connect       Don't connect to the card on startup
+    -y, --dont-ask           Don't ask for confirmation for every
+                             command run from the scriptfiles
+    -i, --force-interactive  Force interactive mode after running
+                             scripts from the command line
+    -h, --help               This help
+"""
+
+OPTIONS = "r:lnyih"
+LONG_OPTIONS = ["reader=", "list-readers","dont-connect","dont-ask","force-interactive","help"]
 exit_now = False
+dont_connect = False
+dont_ask = False
+force_interactive = False
 reader = None
 
 if __name__ == "__main__":
@@ -451,6 +471,15 @@ if __name__ == "__main__":
         if option in ("-l","--list-readers"):
             list_readers()
             exit_now = True
+        if option in ("-h","--help"):
+            usage()
+            exit_now = True
+        if option in ("-n","--dont-connect"):
+            dont_connect = True
+        if option in ("-y","--dont-ask"):
+            dont_ask = True
+        if option in ("-i","--force-interactive"):
+            force_interactive = True
     
     if exit_now:
         sys.exit()
@@ -458,5 +487,14 @@ if __name__ == "__main__":
     
     print "Cyberflex shell"
     shell = Cyberflex_Shell("cyberflex-shell")
-    shell.cmd_connect(reader)
-    shell.run()
+    
+    if not dont_connect:
+        shell.cmd_connect(reader)
+    
+    shell.run_startup()
+    
+    for filename in arguments:
+        shell.cmd_runscript(filename, not dont_ask)
+    
+    if len(arguments) == 0 or force_interactive:
+        shell.run()

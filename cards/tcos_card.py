@@ -7,9 +7,12 @@ MODE_CBC = 1
 ALGO_IDEA = 0x1
 ALGO_DES = 0x2
 ALGO_DES3 = 0x3
+SE_APDU = 1
+SE_RAPDU = 2
+SE_PSO = 3
     
 class SE_Config:
-    def __init__(self, config = None, operation = "\xB4"):
+    def __init__(self, config = None):
         self.algorithm = None
         self.mode = MODE_ECB
         self.keyref = 0
@@ -45,9 +48,15 @@ class TCOS_Security_Environment(object):
         self.card = card
         self.last_c_apdu = None
         self.last_r_apdu = None
-        self.mso = SE_Config()
-        self.se_apdu = SE_Config()
-        self.se_rapdu = SE_Config()
+        self.config = {}
+    
+    def get_config(self, context, operation):
+        if not self.config.has_key( (context, operation) ):
+            self.set_config( context, operation, SE_Config() )
+        return self.config[ context, operation ]
+    
+    def set_config(self, context, operation, config):
+        self.config[ context, operation ] = config
     
     def before_send(self, apdu):
         self.last_c_apdu = apdu
@@ -62,15 +71,15 @@ class TCOS_Security_Environment(object):
         return result
     
     def parse_mse(self, apdu):
-        if apdu.p1 & 1 != 1:
-            return
+        assert apdu.p1 & 0x0f == 1
+        operation = apdu.p2
         
         if apdu.p1 & 0x10 == 0x10:
-            self.se_apdu = SE_Config(apdu.data, apdu.p2)
+            self.set_config( SE_APDU,  operation, SE_Config(apdu.data) )
         if apdu.p1 & 0x20 == 0x20:
-            self.se_rapdu = SE_Config(apdu.data, apdu.p2)
+            self.set_config( SE_RAPDU, operation, SE_Config(apdu.data) )
         if apdu.p1 & 0xc0 == 0xc0:
-            self.se_pso = SE_Config(apdu.data, apdu.p2)
+            self.set_config( SE_PSO,   operation, SE_Config(apdu.data) )
     
     def set_key(self, keyref, keyvalue):
         self.keys[keyref] = keyvalue

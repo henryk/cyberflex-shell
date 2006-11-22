@@ -1,17 +1,53 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import pycsc, crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt
+import pycsc, crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt, datetime
 from shell import Shell
 
 def list_readers():
     for index, name in enumerate(pycsc.listReader()):
         print "%i: %s" % (index, name)
 
+class Logger(object):
+    def __init__(self, filename, stream, prefix = "# "):
+        self.fp = file(filename, "w")
+        self.stream = stream
+        self.prefix = prefix
+        self.need_prefix = True
+    
+    def println(self, string):
+        if not self.need_prefix:
+            self.fp.write("\n")
+            self.need_prefix = True
+        self.fp.write("\n".join(string.splitlines()) + "\n")
+    
+    def flush(self):
+        return self.stream.flush()
+    
+    def close(self):
+        self.stream.close()
+    
+    def writelines(self, lines):
+        for line in lines:
+            self.write(line)
+    
+    def write(self, line):
+        if self.need_prefix:
+            self.fp.write(self.prefix)
+            self.need_prefix = False
+        
+        self.fp.write( ( ("\n"+self.prefix).join(line.splitlines()) ) )
+        if line[-1] == "\n":
+            self.fp.write("\n")
+            self.need_prefix = True
+        
+        self.stream.write(line)
+
 class Cyberflex_Shell(Shell):
     def __init__(self, basename):
         self.print_backtrace = True
         self.reader = 0
+        self.logger = None
         Shell.__init__(self, basename)
         self.register_commands(self, self.NOCARD_COMMANDS)
         self.set_prompt("(No card) ")
@@ -321,6 +357,52 @@ class Cyberflex_Shell(Shell):
         
         if len(response.data) > 0: ## The SW is already printed by _print_sw as a post_hook
             print utils.hexdump(response.data)
+    
+    def pause_log(self):
+        if self.logger is not None:
+            sys.stdout = self.logger.stream
+    
+    def unpause_log(self):
+        if self.logger is not None:
+            sys.stdout = self.logger
+    
+    def start_log(self, filename):
+        if self.logger is not None:
+            self.stop_log()
+        self.logger = Logger(filename, sys.stdout)
+        sys.stdout = self.logger
+        print "Logging to %s" % filename
+        self.register_pre_hook(self.pause_log)
+    
+    def stop_log(self):
+        if self.logger is not None:
+            print "Log stopped"
+            sys.stdout = self.logger.stream
+            self.logger.flush()
+            self.logger = None
+            self.unregister_pre_hook(self.pause_log)
+    
+    def parse_and_execute(self, line):
+        if self.logger is not None:
+            self.logger.println( self.logger.prefix + "\n" 
+                + self.logger.prefix + "=== " + datetime.datetime.now().isoformat(" ") + " " + ("="*49) )
+            self.logger.println(line)
+        if self.logger is not None:
+            self.unpause_log()
+        result = Shell.parse_and_execute(self, line)
+        return result
+    
+    def cmd_log(self, filename = None):
+        "Start (when given a filename) or stop (otherwise) logging to a file"
+        if filename is not None:
+            date = datetime.datetime.now()
+            vars = {
+                "HOMEDIR": os.environ["HOME"],
+                "ISOTIME": date.isoformat()
+            }
+            self.start_log(filename % vars)
+        else:
+            self.stop_log()
 
     def _print_sw(self):
         if self.card.sw_changed:
@@ -422,6 +504,7 @@ class Cyberflex_Shell(Shell):
         "save_response": cmd_save_response,
         "fancy": cmd_fancy,
         "enc": cmd_enc,
+        "log": cmd_log,
     } )
     
     CARD_COMMANDS = {

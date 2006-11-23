@@ -25,7 +25,7 @@ class Logger(object):
         return self.stream.flush()
     
     def close(self):
-        self.stream.close()
+        self.fp.close()
     
     def writelines(self, lines):
         for line in lines:
@@ -37,7 +37,7 @@ class Logger(object):
             self.need_prefix = False
         
         self.fp.write( ( ("\n"+self.prefix).join(line.splitlines()) ) )
-        if line[-1] == "\n":
+        if len(line) > 0 and line[-1] == "\n":
             self.fp.write("\n")
             self.need_prefix = True
         
@@ -280,7 +280,8 @@ class Cyberflex_Shell(Shell):
                         child_string, child_mark = child.flatten(offset, ignore_types)
                         string_result.append(child_string)
                         offset = end = offset + len(child_string)
-                        mark_result.append( (child.type, start, end) )
+                        if not child.type in ignore_types:
+                            mark_result.append( (child.type, start, end) )
                         mark_result.extend(child_mark)
                 
                 return "".join(string_result), mark_result

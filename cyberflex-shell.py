@@ -327,7 +327,7 @@ class Cyberflex_Shell(Shell):
             formatted_len = "%02x" % l  ## FIXME len > 255?
             apdu_head = binascii.a2b_hex("".join( (apdu_head + formatted_len).split() ))
         
-        apdu_tail, marks = tree.flatten(offset=len(apdu_head))
+        apdu_tail, marks = tree.flatten(offset=0)
         
         apdu = utils.C_APDU(apdu_head + apdu_tail, marks = marks)
         return apdu

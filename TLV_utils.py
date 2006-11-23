@@ -339,18 +339,34 @@ def decode(data, context = None, level = 0, tags=tags):
     
     return "\n".join(result)
 
-def unpack(data):
+def unpack(data, with_marks = None, offset = 0):
     result = []
     while len(data) > 0:
         if ord(data[0]) in (0x00, 0xFF):
             data = data[1:]
+            offset = offset + 1
             continue
         
+        l = len(data)
         ber_class, constructed, tag, length, value, data = tlv_unpack(data)
-        if not constructed:
-            result.append( (tag, length, value) )
+        stop = offset + (l - len(data))
+        start = stop - length
+        
+        if with_marks is not None:
+            marks = []
+            for type, mark_start, mark_stop in with_marks:
+                if (mark_start, mark_stop) == (start, stop):
+                    marks.append(type)
+            marks = (marks, )
         else:
-            result.append( (tag, length, unpack(value)) )
+            marks = ()
+        
+        if not constructed:
+            result.append( (tag, length, value) + marks )
+        else:
+            result.append( (tag, length, unpack(value, with_marks, offset = start)) + marks )
+        
+        offset = stop
     
     return result
 
@@ -359,6 +375,10 @@ if __name__ == "__main__":
         +"02 01 00 86 18 60 00 00 00 ff ff b2 00 00 00 ff" \
         +"ff dc 00 00 00 ff ff e4 10 00 00 ff ff").split()))
     
-    decoded = decode(test)
+    #decoded = decode(test)
     #print decoded
-    print decode(file("c100").read())
+    #print decode(file("c100").read())
+    
+    marks = [ ('[', 5, 8) ]
+    print unpack( binascii.a2b_hex( "".join( "80 01 aa  b0 03 81 01 bb ".split() ) ), with_marks=marks)
+    

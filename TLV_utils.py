@@ -283,12 +283,12 @@ def tlv_unpack(data):
     if length < 0x80:
         data = data[1:]
     elif length & 0x80 == 0x80:
-	length_ = 0
-	data = data[1:]
-	for i in range(0,length & 0x7F):
-	    length_ = length_ * 256 + ord(data[0])
-	    data = data[1:]
-	length = length_
+        length_ = 0
+        data = data[1:]
+        for i in range(0,length & 0x7F):
+            length_ = length_ * 256 + ord(data[0])
+            data = data[1:]
+        length = length_
     
     value = data[:length]
     rest = data[length:]
@@ -370,6 +370,38 @@ def unpack(data, with_marks = None, offset = 0):
     
     return result
 
+def pack(tlv_data, recalculate_length = False):
+    result = []
+    
+    for data in tlv_data:
+        tag, length, value = data[:3]
+        if not isinstance(value, str):
+            value = pack(value, recalculate_length)
+        
+        if recalculate_length:
+            length = len(value)
+        
+        t = ""
+        while tag > 0:
+            t = chr( tag & 0xff ) + t
+            tag = tag >> 8
+        
+        if length < 0x7F:
+            l = chr(length)
+        else:
+            l = ""
+            while length > 0:
+                l = chr( length & 0xff ) + l
+                length = length >> 8
+            assert len(l) < 0x7f
+            l = chr( 0x80 | len(l) ) + l
+        
+        result.append(t)
+        result.append(l)
+        result.append(value)
+    
+    return "".join(result)
+
 if __name__ == "__main__":
     test = binascii.unhexlify("".join(("6f 2b 83 02 2f 00 81 02 01 00 82 03 05 41 26 85" \
         +"02 01 00 86 18 60 00 00 00 ff ff b2 00 00 00 ff" \
@@ -380,5 +412,9 @@ if __name__ == "__main__":
     #print decode(file("c100").read())
     
     marks = [ ('[', 5, 8) ]
-    print unpack( binascii.a2b_hex( "".join( "80 01 aa  b0 03 81 01 bb ".split() ) ), with_marks=marks)
-    
+    a = binascii.a2b_hex( "".join( "80 01 aa  b0 03 81 01 bb ".split() ) )
+    b = unpack( a, with_marks=marks)
+    print b
+    c = pack(b, recalculate_length = True)
+    print utils.hexdump(a)
+    print utils.hexdump(c)

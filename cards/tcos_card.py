@@ -100,6 +100,10 @@ class TCOS_Security_Environment(object):
     
     def encrypt_command(self, tlv_data):
         config = self.get_config(SE_APDU, TEMPLATE_CT)
+        
+        if config.algorithm is None: ## FIXME: Find out the correct way to determine this
+            return tlv_data
+        
         result = []
         for data in tlv_data:
             tag, length, value, marks = data
@@ -107,21 +111,33 @@ class TCOS_Security_Environment(object):
                 t = tag & ~(0x01)
                 if t == 0x84:
                     value_ = self.pad(value)
+                    print "| Tag 0x%02x, length 0x%02x, encrypting (with ISO padding): " % (tag, length)
+                    print "|| " + "\n|| ".join( utils.hexdump( value_ ).splitlines() )
                     
                     value = crypto_utils.cipher( True, 
                         self.get_cipherspec(config),
                         self.get_key(config),
                         value_,
                         self.get_iv(config) )
+                    
+                    print "| Encrypted result of length 0x%02x:" % len(value)
+                    print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
+                    print
                 elif t == 0x86:
                     pi = value[0]
                     value_ = self.pad(value[1:], ord(pi))
+                    print "| Tag 0x%02x, length 0x%02x, encrypting (with padding type %x): " % (tag, length, ord(pi))
+                    print "|| " + "\n|| ".join( utils.hexdump( value_ ).splitlines() )
                     
                     value = pi + crypto_utils.cipher( True,
                         self.get_cipherspec(config),
                         self.get_key(config),
                         value_,
                         self.get_iv(config) )
+                    
+                    print "| Encrypted result of length 0x%02x:" % len(value)
+                    print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
+                    print
                 
                 result.append( (tag, length, value) )
             else: # Ignore
@@ -132,33 +148,59 @@ class TCOS_Security_Environment(object):
     def authenticate_command(self, apdu, tlv_data):
         # FIXME: This method does not work correctly when there are 00 or ff fill bytes in the TLV stream
         config = self.get_config(SE_APDU, TEMPLATE_CCT)
-        buffer = ""
+        
+        if config.algorithm is None: ## FIXME: Find out the correct way to determine this
+            return tlv_data
+        
+        print_buffer = False
+        for data in tlv_data:
+            if data[0] == 0x8E:
+                print_buffer = True
+                print "| Calculating cryptographic checksum:"
+        
+        def do_block(buffer, block):
+            block = self.pad(block, pi = PI_ISO)
+            offset = sum( [len(b) for b in buffer] )
+            buffer.append(block)
+            if print_buffer:
+                print "|| " + "\n|| ".join( utils.hexdump( block, offset = offset ).splitlines() )
+        
+        buffer = []
         if apdu.cla & 0x0c == 0x0c:
-            buffer = apdu.render()[:4]
-            buffer = self.pad(buffer, pi = PI_ISO)
+            block = apdu.render()[:4]
+            do_block(buffer, block)
         
         need_pad = False
+        
+        block = ""
         for data in tlv_data:
             tag, length, value = data[:3]
             if tag & 0x01 == 0x01 or tag not in range(0x80, 0xbf+1):
                 value_ = TLV_utils.pack( (data, ), recalculate_length=True )
                 
-                buffer = buffer + value_
+                block = block + value_
                 need_pad = True
             else:
                 if need_pad:
-                    buffer = self.pad(buffer, pi = PI_ISO)
+                    do_block(buffer, block)
+                    block = ""
                     need_pad = False
         
         if need_pad:
-            buffer = self.pad(buffer, pi = PI_ISO)
+            do_block(buffer, block)
+            block = ""
             need_pad = False
         
         cct = crypto_utils.cipher( True, 
             self.get_cipherspec(config),
             self.get_key(config),
-            buffer,
+            "".join(buffer),
             self.get_iv(config) )[-8:]
+        
+        if print_buffer:
+            print "| Result (Tag 0x8e, length: 0x%02x):" % len(cct)
+            print "|| " + "\n|| ".join( utils.hexdump( cct ).splitlines() )
+            print
         
         result = []
         for data in tlv_data:
@@ -168,6 +210,7 @@ class TCOS_Security_Environment(object):
                 data[2] = cct
                 data = tuple(data)
             result.append( data )
+        
         
         return result
     

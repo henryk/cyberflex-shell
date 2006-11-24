@@ -37,7 +37,7 @@ def parse_binary(value, bytemasks, verbose = False, value_len = 8):
     return result
 
 _myprintable = " " + string.letters + string.digits + string.punctuation
-def hexdump(data, indent = 0, short = False, linelen = 16):
+def hexdump(data, indent = 0, short = False, linelen = 16, offset = 0):
     r"""Generates a nice hexdump of data and returns it. Consecutive lines will 
     be indented with indent spaces. When short is true, will instead generate 
     hexdump without adresses and on one line.
@@ -63,7 +63,7 @@ def hexdump(data, indent = 0, short = False, linelen = 16):
     while len(head) > 0:
         if pos > 0:
             result = result + "\n%s" % (' ' * indent)
-        result = result + FORMATSTRING % (pos, hexable(head), printable(head))
+        result = result + FORMATSTRING % (pos+offset, hexable(head), printable(head))
         pos = pos + len(head)
         (head, tail) = (tail[:linelen], tail[linelen:])
     return result

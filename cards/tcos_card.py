@@ -1,4 +1,4 @@
-import utils, TLV_utils
+import utils, TLV_utils, crypto_utils
 from iso_7816_4_card import *
 import building_blocks
 
@@ -10,7 +10,10 @@ ALGO_DES3 = 0x3
 SE_APDU = 1
 SE_RAPDU = 2
 SE_PSO = 3
-    
+TEMPLATE_CCT = 0xB4 # Template for Cryptographic Checksum
+TEMPLATE_CT = 0xB8 # Template for Confidentiality
+PI_ISO = 1 # Padding indicator for ISO padding (\x80\x00...)
+
 class SE_Config:
     def __init__(self, config = None):
         self.algorithm = None
@@ -18,6 +21,8 @@ class SE_Config:
         self.keyref = 0
         self.keytype = 0
         self.iv = "\x00" * 8
+        self.context = None
+        self.operation = None
         if config is not None:
             self.parse(config)
     
@@ -43,6 +48,8 @@ class SE_Config:
                 raise ValueError, "Malformed MSE parameters (tag 0x%02x)" % tag
 
 class TCOS_Security_Environment(object):
+    MARK_ENCRYPT = "["
+    
     def __init__(self, card):
         self.keys = {}
         self.card = card
@@ -50,16 +57,23 @@ class TCOS_Security_Environment(object):
         self.last_r_apdu = None
         self.config = {}
     
+    def have_config(self, context, operation):
+        return self.config.has_key( (context, operation) )
+    
     def get_config(self, context, operation):
-        if not self.config.has_key( (context, operation) ):
+        if not self.have_config(context, operation):
             self.set_config( context, operation, SE_Config() )
         return self.config[ context, operation ]
     
     def set_config(self, context, operation, config):
         self.config[ context, operation ] = config
+        config.context = context
+        config.operation = operation
     
     def before_send(self, apdu):
         self.last_c_apdu = apdu
+        if apdu.cla & 0x0c in (0x08, 0x0c):
+            apdu = self.process_apdu(apdu)
         return apdu
     
     def after_send(self, result):
@@ -69,6 +83,129 @@ class TCOS_Security_Environment(object):
                 if self.last_c_apdu.ins == 0x22:
                     self.parse_mse(self.last_c_apdu)
         return result
+    
+    def process_apdu(self, apdu):
+        if apdu.cla & 0x0c in (0x0c, 0x08):
+            tlv_data = TLV_utils.unpack(apdu.data, with_marks = apdu.marks)
+            
+            tlv_data = self.encrypt_command(tlv_data)
+            tlv_data = self.authenticate_command(apdu, tlv_data)
+            
+            data = TLV_utils.pack(tlv_data, recalculate_length = True)
+            new_apdu = C_APDU(apdu, data = data)
+            
+            return new_apdu
+        else:
+            return apdu
+    
+    def encrypt_command(self, tlv_data):
+        config = self.get_config(SE_APDU, TEMPLATE_CT)
+        result = []
+        for data in tlv_data:
+            tag, length, value, marks = data
+            if self.MARK_ENCRYPT in marks:
+                t = tag & ~(0x01)
+                if t == 0x84:
+                    value_ = self.pad(value)
+                    
+                    value = crypto_utils.cipher( True, 
+                        self.get_cipherspec(config),
+                        self.get_key(config),
+                        value_,
+                        self.get_iv(config) )
+                elif t == 0x86:
+                    pi = value[0]
+                    value_ = self.pad(value[1:], ord(pi))
+                    
+                    value = pi + crypto_utils.cipher( True,
+                        self.get_cipherspec(config),
+                        self.get_key(config),
+                        value_,
+                        self.get_iv(config) )
+                
+                result.append( (tag, length, value) )
+            else: # Ignore
+                result.append(data[:3])
+        
+        return result
+
+    def authenticate_command(self, apdu, tlv_data):
+        # FIXME: This method does not work correctly when there are 00 or ff fill bytes in the TLV stream
+        config = self.get_config(SE_APDU, TEMPLATE_CCT)
+        buffer = ""
+        if apdu.cla & 0x0c == 0x0c:
+            buffer = apdu.render()[:4]
+            buffer = self.pad(buffer, pi = PI_ISO)
+        
+        need_pad = False
+        for data in tlv_data:
+            tag, length, value = data[:3]
+            if tag & 0x01 == 0x01 or tag not in range(0x80, 0xbf+1):
+                value_ = TLV_utils.pack( (data, ), recalculate_length=True )
+                
+                buffer = buffer + value_
+                need_pad = True
+            else:
+                if need_pad:
+                    buffer = self.pad(buffer, pi = PI_ISO)
+                    need_pad = False
+        
+        if need_pad:
+            buffer = self.pad(buffer, pi = PI_ISO)
+            need_pad = False
+        
+        cct = crypto_utils.cipher( True, 
+            self.get_cipherspec(config),
+            self.get_key(config),
+            buffer,
+            self.get_iv(config) )[-8:]
+        
+        result = []
+        for data in tlv_data:
+            if data[0] == 0x8E:
+                data = list(data)
+                data[1] = len(cct)
+                data[2] = cct
+                data = tuple(data)
+            result.append( data )
+        
+        return result
+    
+    def get_cipherspec(self, config):
+        g = globals()
+        spec = ""
+        for name in g.keys():
+            if name.startswith("ALGO_") and config.algorithm == g[name]:
+                spec = name.split("_",1)[1].lower()
+        
+        if spec == "":
+            raise ValueError, "Unknown algorithm %s" % config.algorithm
+        
+        for name in g.keys():
+            if name.startswith("MODE_") and config.mode == g[name]:
+                spec = spec + "-" + name.split("_",1)[1].lower()
+        
+        if "-" not in spec:
+            raise ValueError, "Unknown mode %s" % config.mode
+        
+        return spec
+    
+    def get_key(self, config):
+        # FIXME stub for more intelligent key handling (e.g. asymmetric, session)
+        return self.keys[config.keyref]
+    
+    def get_iv(self, config):
+        # FIXME stub for more intelligent iv handling (e.g. last random)
+        return config.iv
+    
+    def pad(self, data, pi = 1):
+        if pi == 1:
+            topad = 8 - len(data) % 8
+            return data + "\x80" + ("\x00" * (topad-1))
+        if pi == 2:
+            return data
+        else:
+            raise ValueError, "Unknown padding indicator %s" % pi
     
     def parse_mse(self, apdu):
         assert apdu.p1 & 0x0f == 1

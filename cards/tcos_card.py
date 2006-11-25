@@ -82,6 +82,9 @@ class TCOS_Security_Environment(object):
             if (self.last_c_apdu.cla & 0xf0) == 0x00:
                 if self.last_c_apdu.ins == 0x22:
                     self.parse_mse(self.last_c_apdu)
+            if (self.last_c_apdu.cla & 0x0c) in (0x08, 0x0c):
+                result = self.process_rapdu(result)
+        
         return result
     
     def process_apdu(self, apdu):
@@ -89,7 +92,7 @@ class TCOS_Security_Environment(object):
             tlv_data = TLV_utils.unpack(apdu.data, with_marks = apdu.marks)
             
             tlv_data = self.encrypt_command(tlv_data)
-            tlv_data = self.authenticate_command(apdu, tlv_data)
+            tlv_data = self.authenticate_apdu(apdu, tlv_data)
             
             data = TLV_utils.pack(tlv_data, recalculate_length = True)
             new_apdu = C_APDU(apdu, data = data)
@@ -98,6 +101,35 @@ class TCOS_Security_Environment(object):
         else:
             return apdu
     
+    def process_rapdu(self, rapdu):
+        if self.last_c_apdu.cla & 0x0c in (0x0c, 0x08):
+            tlv_data = TLV_utils.unpack(rapdu.data)
+            tlv_c_data = TLV_utils.unpack(self.last_c_apdu.data)
+            
+            must_authenticate = False
+            for data in tlv_c_data:
+                if data[0] & ~0x01 == 0xBA:
+                    for response_template in data[2]:
+                        if response_template[0] == 0x8E:
+                            must_authenticate = True
+            if must_authenticate:
+                for data in tlv_data:
+                    if data[0] == 0x8E:
+                        must_authenticate = False
+            
+            tlv_data = self.authenticate_apdu(rapdu, tlv_data)
+            
+            if must_authenticate:
+                print "| CRYPTOGRAPHIC CHECKSUM VERIFICATION ERROR"
+                print "| No cryptographic checksum was included in the response"
+            
+            data = TLV_utils.pack(tlv_data, recalculate_length = True)
+            new_apdu = R_APDU(rapdu, data = data)
+            
+            return new_apdu
+        else:
+            return rapdu
+
     def encrypt_command(self, tlv_data):
         config = self.get_config(SE_APDU, TEMPLATE_CT)
         
@@ -145,9 +177,10 @@ class TCOS_Security_Environment(object):
         
         return result
 
-    def authenticate_command(self, apdu, tlv_data):
+    def authenticate_apdu(self, apdu, tlv_data):
         # FIXME: This method does not work correctly when there are 00 or ff fill bytes in the TLV stream
-        config = self.get_config(SE_APDU, TEMPLATE_CCT)
+        is_command = isinstance(apdu, C_APDU)
+        config = self.get_config(is_command and SE_APDU or SE_RAPDU, TEMPLATE_CCT)
         
         if config.algorithm is None: ## FIXME: Find out the correct way to determine this
             return tlv_data
@@ -156,6 +189,7 @@ class TCOS_Security_Environment(object):
         for data in tlv_data:
             if data[0] == 0x8E:
                 print_buffer = True
+                if not is_command: print
                 print "| Calculating cryptographic checksum:"
         
         def do_block(buffer, block):
@@ -166,7 +200,7 @@ class TCOS_Security_Environment(object):
                 print "|| " + "\n|| ".join( utils.hexdump( block, offset = offset ).splitlines() )
         
         buffer = []
-        if apdu.cla & 0x0c == 0x0c:
+        if is_command and apdu.cla & 0x0c == 0x0c:
             block = apdu.render()[:4]
             do_block(buffer, block)
         
@@ -200,16 +234,31 @@ class TCOS_Security_Environment(object):
         if print_buffer:
             print "| Result (Tag 0x8e, length: 0x%02x):" % len(cct)
             print "|| " + "\n|| ".join( utils.hexdump( cct ).splitlines() )
-            print
+            if is_command: print
         
         result = []
-        for data in tlv_data:
-            if data[0] == 0x8E:
-                data = list(data)
-                data[1] = len(cct)
-                data[2] = cct
-                data = tuple(data)
-            result.append( data )
+        if is_command:
+            for data in tlv_data:
+                if data[0] == 0x8E:
+                    data = list(data)
+                    data[1] = len(cct)
+                    data[2] = cct
+                    data = tuple(data)
+                result.append( data )
+        else:
+            for data in tlv_data:
+                if data[0] == 0x8E:
+                    value = data[2]
+                    if len(value) >= 4 and cct.startswith(value):
+                        print "| Cryptographic checksum verifies OK"
+                    else:
+                        print "| CRYPTOGRAPHIC CHECKSUM VERIFICATION ERROR"
+                        print "| Is:"
+                        print "|| " + "\n|| ".join( utils.hexdump( value ).splitlines() )
+                        print "| Should be:"
+                        print "|| " + "\n|| ".join( utils.hexdump( cct ).splitlines() )
+                else:
+                    result.append( data )
         
         
         return result

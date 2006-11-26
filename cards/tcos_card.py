@@ -102,6 +102,7 @@ class TCOS_Security_Environment(object):
             return apdu
     
     def process_rapdu(self, rapdu):
+        result = rapdu
         if self.last_c_apdu.cla & 0x0c in (0x0c, 0x08):
             tlv_c_data = TLV_utils.unpack(self.last_c_apdu.data)
             
@@ -118,11 +119,9 @@ class TCOS_Security_Environment(object):
                 data = TLV_utils.pack(tlv_data, recalculate_length = True)
                 new_apdu = R_APDU(rapdu, data = data)
                 
-                return new_apdu
-            else:
-                return rapdu
-        else:
-            return rapdu
+                result = new_apdu
+        
+        return result
 
     def encrypt_command(self, tlv_data):
         config = self.get_config(SE_APDU, TEMPLATE_CT)

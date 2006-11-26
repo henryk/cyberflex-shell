@@ -196,7 +196,7 @@ class TCOS_Security_Environment(object):
                 value_ = TLV_utils.pack( (data, ), recalculate_length=True )
                 
                 block.append( value_ )
-            elif tag in (0xff, 0x00):
+            elif tag in (0xff, 0x00) and len(block) > 0:
                 block.append( chr(tag) )
             else:
                 if len(block) > 0:

@@ -339,10 +339,15 @@ def decode(data, context = None, level = 0, tags=tags):
     
     return "\n".join(result)
 
-def unpack(data, with_marks = None, offset = 0):
+def unpack(data, with_marks = None, offset = 0, include_filler=False):
     result = []
     while len(data) > 0:
         if ord(data[0]) in (0x00, 0xFF):
+            if include_filler:
+                if with_marks is None:
+                    result.append( (ord(data[0]), None, None) )
+                else:
+                    result.append( (ord(data[0]), None, None, () ) )
             data = data[1:]
             offset = offset + 1
             continue
@@ -375,6 +380,10 @@ def pack(tlv_data, recalculate_length = False):
     
     for data in tlv_data:
         tag, length, value = data[:3]
+        if tag in (0xff, 0x00):
+            result.append( chr(tag) )
+            continue
+        
         if not isinstance(value, str):
             value = pack(value, recalculate_length)
         
@@ -412,8 +421,8 @@ if __name__ == "__main__":
     #print decode(file("c100").read())
     
     marks = [ ('[', 5, 8) ]
-    a = binascii.a2b_hex( "".join( "80 01 aa  b0 03 81 01 bb ".split() ) )
-    b = unpack( a, with_marks=marks)
+    a = binascii.a2b_hex( "".join( "80 01 aa  b0 03 81 01 bb ff ff 00".split() ) )
+    b = unpack( a, with_marks=marks, include_filler=True)
     print b
     c = pack(b, recalculate_length = True)
     print utils.hexdump(a)

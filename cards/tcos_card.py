@@ -107,21 +107,58 @@ class TCOS_Security_Environment(object):
             tlv_c_data = TLV_utils.unpack(self.last_c_apdu.data)
             
             must_authenticate = False
+            must_decrypt = False
             for data in tlv_c_data:
                 if data[0] & ~0x01 == 0xBA:
                     for response_template in data[2]:
                         if response_template[0] == 0x8E:
                             must_authenticate = True
+                        if response_template[0] & ~0x01 in (0x84, 0x86):
+                            must_decrypt = True
             
-            if must_authenticate:
+            if must_authenticate or must_decrypt:
                 tlv_data = TLV_utils.unpack(rapdu.data, include_filler=True)
-                tlv_data = self.authenticate_response(tlv_data)
-                data = TLV_utils.pack(tlv_data, recalculate_length = True)
+                
+                if must_authenticate:
+                    tlv_data = self.authenticate_response(tlv_data)
+                
+                if must_decrypt:
+                    tlv_data = self.decrypt_response(tlv_data)
+                
+                #data = TLV_utils.pack(tlv_data, recalculate_length = True)
+                data = self.deformat_response(tlv_data)
                 new_apdu = R_APDU(rapdu, data = data)
                 
                 result = new_apdu
+            
         
         return result
+    
+    def deformat_response(self, tlv_data):
+        WHITELIST = (0x84, 0x86)
+        
+        result = []
+        is_ok = True
+        for data in tlv_data:
+            t = data[0] & ~0x01
+            if t not in WHITELIST and t in range(0x80, 0xBF+1):
+                is_ok = False # Unrecognized SM field present
+        
+        if is_ok:
+            for data in tlv_data:
+                t = data[0] & ~0x01
+                value = data[2]
+                if t in WHITELIST:
+                    if t == 0x86:
+                        result.append( value[1:] )
+                    else:
+                        result.append( value )
+                else:
+                    result.append( TLV_utils.pack( (data,), recalculate_length = True) )
+        else:
+            result.append( TLV_utils.pack( tlv_data, recalculate_length = True) )
+        
+        return "".join(result)
 
     def encrypt_command(self, tlv_data):
         config = self.get_config(SE_APDU, TEMPLATE_CT)
@@ -167,6 +204,66 @@ class TCOS_Security_Environment(object):
                 result.append( (tag, length, value) )
             else: # Ignore
                 result.append(data[:3])
+        
+        return result
+    
+    def decrypt_response(self, tlv_data):
+        config = self.get_config(SE_RAPDU, TEMPLATE_CT)
+        
+        if config.algorithm is None: ## FIXME: Find out the correct way to determine this
+            return tlv_data
+        
+        result = []
+        
+        for data in tlv_data:
+            tag, length, value = data[:3]
+            marks = len(data) > 3 and data[3] or ()
+            t = tag & ~(0x01)
+            if t == 0x84:
+                print
+                print "| Tag 0x%02x, length 0x%02x, encrypted (with ISO padding): " % (tag, length)
+                print "|| " + "\n|| ".join( utils.hexdump( value ).splitlines() )
+                
+                value_ = crypto_utils.cipher( False, 
+                    self.get_cipherspec(config),
+                    self.get_key(config),
+                    value,
+                    self.get_iv(config) )
+                
+                print "| Decrypted result of length 0x%02x:" % len(value_)
+                print "|| " + "\n|| ".join( utils.hexdump(value_).splitlines() )
+                
+                value = self.unpad(value_)
+                
+                if False:
+                    print "| Depadded result of length 0x%02x:" % len(value)
+                    print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
+                marks = marks + (self.MARK_ENCRYPT,)
+            elif t == 0x86:
+                pi = value[0]
+                print
+                print "| Tag 0x%02x, length 0x%02x, decrypting (with padding type %x): " % (tag, length, ord(pi))
+                print "|| " + "\n|| ".join( utils.hexdump( value[1:] ).splitlines() )
+                
+                value_ = crypto_utils.cipher( False,
+                    self.get_cipherspec(config),
+                    self.get_key(config),
+                    value[1:],
+                    self.get_iv(config) )
+                
+                print "| Decrypted result of length 0x%02x:" % len(value_)
+                print "|| " + "\n|| ".join( utils.hexdump(value_).splitlines() )
+                
+                value = self.unpad(value_, ord(pi))
+                
+                if False:
+                    print "| Depadded result of length 0x%02x:" % len(value)
+                    print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
+                
+                value = pi + value
+                marks = marks + (self.MARK_ENCRYPT,)
+            
+            result.append( (tag, length, value, marks) )
         
         return result
     
@@ -302,6 +399,19 @@ class TCOS_Security_Environment(object):
             topad = 8 - len(data) % 8
             return data + "\x80" + ("\x00" * (topad-1))
         if pi == 2:
+            return data
+        else:
+            raise ValueError, "Unknown padding indicator %s" % pi
+    
+    def unpad(self, data, pi = 1):
+        if pi == 1:
+            pos = len(data)-1
+            while ord(data[pos]) != 0x80:
+                if ord(data[pos]) != 0x00:
+                    raise ValueError, "Padding error"
+                pos = pos - 1
+            return data[:pos]
+        elif pi == 2:
             return data
         else:
             raise ValueError, "Unknown padding indicator %s" % pi

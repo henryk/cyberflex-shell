@@ -1,4 +1,4 @@
-import utils, re
+import utils, re, sys, getpass, struct
 from iso_7816_4_card import *
 
 class Postcard_Card(ISO_7816_4_Card):
@@ -10,7 +10,7 @@ class Postcard_Card(ISO_7816_4_Card):
 
     
     ATRS = [ 
-        ("3f65351002046c9000", None),
+        ("3f65351002046c90..", None),
     ]
 
     def _get_binary(self, offset, length):
@@ -67,8 +67,48 @@ class Postcard_Card(ISO_7816_4_Card):
         new_data = binascii.a2b_hex(suppression_des_3)
         print utils.hexdump(new_data)
         
+        fields = [
+            (None, 2),
+            ("card number", 19),
+            ("usage code", 3),
+            ("valid from", 4),
+            ("language code", 3),
+            ("valid till", 4),
+            ("currency code", 3),
+            ("denomination", 1),
+            ("(unknown)", 3),
+            ("card holder", 26*2)
+        ]
+        
+        print "Decoding:"
+        pos = 0
+        for name, length in fields:
+            value = suppression_des_3[pos:pos+length]
+            pos = pos+length
+            if name is None:
+                continue
+            print "\t%20s: %s" % (name, value)
+        
+        print "\t%20s '%s'" % ("", binascii.a2b_hex(value))
+    
+    def cmd_give_pin(self):
+        old = sys.modules["cards.generic_card"].DEBUG
+        try:
+            pin = getpass.getpass("Enter PIN: ")
+            if len(pin) != 4:
+                raise ValueError, "PIN must be 4 characters in length"
+            pinint = int(pin, 16)
+            pinint = (pinint << 14) | 0x3fff
+            data = struct.pack(">I", pinint)
+            sys.modules["cards.generic_card"].DEBUG = False
+            command = C_APDU(cla=0xBC, ins=0x20, data=data, le=0)
+            result = self.send_apdu(command)
+        finally:
+            sys.modules["cards.generic_card"].DEBUG = old
+
     
     COMMANDS = {
         "calculate_zone_addresses": cmd_calculate_zone_addresses,
         "read_identification_zone": cmd_read_identification_zone,
+        "give_pin": cmd_give_pin,
     }

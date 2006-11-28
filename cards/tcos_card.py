@@ -28,12 +28,11 @@ class SE_Config:
     
     def parse(self, config):
         structure = TLV_utils.unpack(config)
-        for tag, length, value in structure:
+        for data in structure:
+            tag, length, value = data
             if tag == 0x80:
                 self.mode = ord(value[0]) & 1
                 algorithm = (ord(value[0]) >> 2) & 0x7
-                if algorithm not in (ALGO_DES, ALGO_DES3, ALGO_IDEA):
-                    raise ValueError, "Malformed cipher algorithm (tag 0x80)"
                 self.algorithm = algorithm
             elif tag in (0x83, 0x84):
                 self.keyref = ord(value)
@@ -45,7 +44,7 @@ class SE_Config:
             elif tag == 0x88:
                 self.iv = None ## FIXME
             else:
-                raise ValueError, "Malformed MSE parameters (tag 0x%02x)" % tag
+                print "Warning: Unknown MSE parameters: tag 0x%02x, length 0x%02x, value: %s" % (tag, length, utils.hexdump(value, short=True))
 
 class TCOS_Security_Environment(object):
     MARK_ENCRYPT = "["

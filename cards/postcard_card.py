@@ -11,6 +11,7 @@ class Postcard_Card(ISO_7816_4_Card):
     
     ATRS = [ 
         ("3f65351002046c90..", None),
+        ("3f65356402046c9040", None),
     ]
 
     def _get_binary(self, offset, length):

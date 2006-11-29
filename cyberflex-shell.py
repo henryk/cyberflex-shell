@@ -209,7 +209,7 @@ class Cyberflex_Shell(Shell):
     def _clear_sw(self):
         self.card.sw_changed = False
     
-    _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|\)|\(|\[|\])\s*)*$', re.I)
+    _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|:|\)|\(|\[|\])\s*)*$', re.I)
     @staticmethod
     def parse_fancy_apdu(*args):
         apdu_string = " ".join(args)
@@ -242,7 +242,7 @@ class Cyberflex_Shell(Shell):
                 "Recursively transform hex strings to binary"
                 for index, child in enumerate(self):
                     if isinstance(child,str):
-                        child = "".join(child.split())
+                        child = "".join( ("".join(child.split())).split(":") )
                         assert len(child) % 2 == 0
                         self[index] = binascii.a2b_hex(child)
                     else:
@@ -292,7 +292,7 @@ class Cyberflex_Shell(Shell):
         allowed_parens = {"(": ")", "[":"]"}
         
         for pos,char in enumerate(apdu_tail):
-            if char in (" ", "a", "b", "c", "d", "e", "f") or char.isdigit():
+            if char in (" ", "a", "b", "c", "d", "e", "f",":") or char.isdigit():
                 if len(current) > 0 and isinstance(current[-1],str):
                     current[-1] = current[-1] + char
                 else:

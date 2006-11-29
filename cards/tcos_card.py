@@ -1,4 +1,4 @@
-import utils, TLV_utils, crypto_utils
+import utils, TLV_utils, crypto_utils, traceback
 from iso_7816_4_card import *
 import building_blocks
 
@@ -118,17 +118,21 @@ class TCOS_Security_Environment(object):
             if must_authenticate or must_decrypt:
                 tlv_data = TLV_utils.unpack(rapdu.data, include_filler=True)
                 
-                if must_authenticate:
-                    tlv_data = self.authenticate_response(tlv_data)
-                
-                if must_decrypt:
-                    tlv_data = self.decrypt_response(tlv_data)
-                
-                #data = TLV_utils.pack(tlv_data, recalculate_length = True)
-                data = self.deformat_response(tlv_data)
-                new_apdu = R_APDU(rapdu, data = data)
-                
-                result = new_apdu
+                try:
+                    if must_authenticate:
+                        tlv_data = self.authenticate_response(tlv_data)
+                    
+                    if must_decrypt:
+                        tlv_data = self.decrypt_response(tlv_data)
+                    
+                    #data = TLV_utils.pack(tlv_data, recalculate_length = True)
+                    data = self.deformat_response(tlv_data)
+                    new_apdu = R_APDU(rapdu, data = data)
+                    
+                    result = new_apdu
+                except ValueError:
+                    print "Warning: Can't authenticate/decrypt response due to exception being raised"
+                    traceback.print_exc(limit=2)
             
         
         return result

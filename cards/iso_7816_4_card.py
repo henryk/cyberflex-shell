@@ -8,6 +8,8 @@ class ISO_7816_4_Card(Card):
     DRIVER_NAME = "ISO 7816-4"
     FID_MF = "\x3f\x00"
     
+    SELECT_P2 = 0x0
+    
 ##    def can_handle(cls, card):
 ##        return True
 ##    can_handle = classmethod(can_handle)
@@ -22,9 +24,9 @@ class ISO_7816_4_Card(Card):
     def change_dir(self, fid = None):
         "Change to a child DF. Alternatively, change to MF if fid is None."
         if fid is None:
-            return self.select_file(0x00, 0x00, "")
+            return self.select_file(0x00, self.SELECT_P2, "")
         else:
-            return self.select_file(0x01, 0x00, fid)
+            return self.select_file(0x01, self.SELECT_P2, fid)
     
     def cmd_cd(self, dir = None):
         "Change into a DF, or into the MF if no dir is given"
@@ -41,7 +43,7 @@ class ISO_7816_4_Card(Card):
     
     def open_file(self, fid):
         "Open an EF under the current DF"
-        return self.select_file(0x02, 0x00, fid)
+        return self.select_file(0x02, self.SELECT_P2, fid)
     
     def cmd_open(self, file):
         "Open a file"

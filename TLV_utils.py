@@ -220,6 +220,10 @@ def decode_lcs(value):
         )
     )
 
+def decode_sfi(value):
+    if len(value) == 0: return ""
+    return " 0x%02x" % (ord(value[0]) >> 3)
+
 tags = {
     None: {
         0x01: (lambda a: (len(a) > 0 and ord(a[0]) != 0) and " True" or " False", "Boolean"),
@@ -251,7 +255,7 @@ tags = {
         0x85: (binary, "Proprietary information"),
         0x86: (binary, "Security attributes"),
         0x87: (binary, "Identifier of an EF containing an extension of the FCI"),
-        0x88: (binary, "Short EF identifier"),
+        0x88: (decode_sfi, "Short EF identifier"),
         0x8A: (decode_lcs, "Life cycle status byte"),
         
         0xA5: (recurse, "Proprietary information", None),

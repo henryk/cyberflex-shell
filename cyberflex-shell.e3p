@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2006-11-22, 07:24:14 -->
-<!-- Copyright (C) 2006 Henryk Plötz, henryk@ploetzli.ch -->
+<!-- Saved: 2007-01-12, 12:30:01 -->
+<!-- Copyright (C) 2007 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>
   <UIType>Qt</UIType>
@@ -79,6 +79,10 @@
     <Source>
       <Dir>cards</Dir>
       <Name>postcard_card.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>seccos_card.py</Name>
     </Source>
   </Sources>
   <Forms>

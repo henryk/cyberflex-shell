@@ -1,3 +1,4 @@
+import utils
 from iso_7816_4_card import *
 
 class SECCOS_Card(ISO_7816_4_Card):
@@ -14,3 +15,13 @@ class SECCOS_Card(ISO_7816_4_Card):
             ("3BFF1800FF8131FE45656311086602800011........0620..", None),
             ("3BFF9600FF8131FE4565631901500280000F........5012..", None),
         ]
+
+    def decode_sfi_path(value):
+        return " SFI: 0x%02x, path: %s" % (ord(value[0]) >> 3, utils.hexdump(value[1:], short=True))
+    
+    TLV_OBJECTS = {
+        TLV_utils.context_FMD: {
+            0x85: (decode_sfi_path, "SFI with path"),
+        },
+    }
+    TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FMD]

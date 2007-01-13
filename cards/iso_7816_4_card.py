@@ -92,14 +92,18 @@ class ISO_7816_4_Card(Card):
         self.last_result = R_APDU(contents + self.last_sw)
         print utils.hexdump(contents)
     
-    def cmd_read_record(self, p1 = 0, p2 = 0, le = 0):
+    def cmd_read_record(self, p1 = None, p2 = None, le = "0"):
         "Read a record"
-        contents = self.read_record(p1 = p1, p2 = p2, le = le)
+        if p1 is None and p2 is None:
+            p1 = p2 = "0"
+        elif p2 is None:
+            p2 = "0x04" # Use record number in P1
+        contents = self.read_record(p1 = int(p1,0), p2 = int(p2,0), le = int(le,0))
         print utils.hexdump(contents)
     
-    def cmd_next_record(self, le = 0):
+    def cmd_next_record(self, le = "0"):
         "Read the next record"
-        return self.cmd_read_record(p1 = 0, p2 = 2, le = le)
+        return self.cmd_read_record(p1 = "0", p2 = "2", le = le)
     
     def cmd_selectfile(self, p1, p2, fid):
         """Select a file on the card."""

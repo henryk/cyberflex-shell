@@ -299,7 +299,7 @@ class Cyberflex_Card(Java_Card):
     
     APPLICATIONS = dict(Java_Card.APPLICATIONS)
     APPLICATIONS.update( {
-        "card_manager": DEFAULT_CARD_MANAGER_AID
+        DEFAULT_CARD_MANAGER_AID: ("card_manager", ),
         } )
 
     COMMANDS = dict(Java_Card.COMMANDS)

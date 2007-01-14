@@ -29,6 +29,23 @@ class Card:
     }
     ## For the format of this dictionary of dictionaries see TLV_utils.tags
     TLV_OBJECTS = {}
+    
+    ## Format: "AID (binary)": ("name", [optional: description, {more information}])
+    APPLICATIONS = {
+        ## The following are from 0341a.pdf: BSI-DSZ-CC-0341-2006
+        "\xD2\x76\x00\x00\x66\x01":             ("DF_SIG",            "Signature application", {"fid": "\xAB\x00"}),
+        "\xD2\x76\x00\x00\x25\x5A\x41\x02":     ("ZA_MF_NEU",         "Zusatzanwendungen",     {"fid": "\xA7\x00"}),
+        "\xD2\x76\x00\x00\x25\x45\x43\x02\x00": ("DF_EC_CASH_NEU",    "ec-Cash",               {"fid": "\xA1\x00"}),
+        "\xD2\x76\x00\x00\x25\x45\x50\x02\x00": ("DF_BOERSE_NEU",     "Geldkarte",             {"fid": "\xA2\x00"}),
+        "\xD2\x76\x00\x00\x25\x47\x41\x01\x00": ("DF_GA_MAESTRO",     "GA-Maestro",            {"fid": "\xAC\x00"}),
+        "\xD2\x76\x00\x00\x25\x54\x44\x01\x00": ("DF_TAN",            "TAN-Anwendung",         {"fid": "\xAC\x02"}),
+        "\xD2\x76\x00\x00\x25\x4D\x01\x02\x00": ("DF_MARKTPLATZ_NEU", "Marktplatz",            {"fid": "\xB0\x01"}),
+        "\xD2\x76\x00\x00\x25\x46\x53\x02\x00": ("DF_FAHRSCHEIN_NEU", "Fahrschein",            {"fid": "\xB0\x00"}),
+        "\xD2\x76\x00\x00\x25\x48\x42\x02\x00": ("DF_BANKING_20" ,    "HBCI",                  {"fid": "\xA6\x00"}),
+        "\xD2\x76\x00\x00\x25\x4E\x50\x01\x00": ("DF_NOTEPAD",        "Notepad",               {"fid": "\xA6\x10"}),
+    }
+    APPLICATIONS["\xA0\x00\x00\x00\x59\x50\x41\x43\x45\x01\x00"] = APPLICATIONS["\xD2\x76\x00\x00\x25\x45\x50\x02\x00"]
+    APPLICATIONS["\xA0\x00\x00\x00\x04\x30\x60"] = APPLICATIONS["\xD2\x76\x00\x00\x25\x47\x41\x01\x00"]
 
     def __init__(self, card = None, reader = None):
         if card is None:
@@ -74,10 +91,24 @@ class Card:
             end = lastlen
         print TLV_utils.decode(self.last_result.data[start:end], tags=self.TLV_OBJECTS)
     
+    _SHOW_APPLICATIONS_FORMAT_STRING = "%(aid)-50s %(name)-20s %(description)-30s"
+    def cmd_show_applications(self):
+        "Show the list of known (by the shell) applications"
+        print self._SHOW_APPLICATIONS_FORMAT_STRING % {"aid": "AID", "name": "Name", "description": "Description"}
+        foo =  self.APPLICATIONS.items()
+        foo.sort()
+        for aid, info in foo:
+            print self._SHOW_APPLICATIONS_FORMAT_STRING % {
+                "aid": utils.hexdump(aid, short=True),
+                "name": info[0],
+                "description": len(info) > 1 and info[1] or ""
+            }
+    
     COMMANDS = {
         "reset": cmd_reset,
         "verify": cmd_verify,
         "parse_tlv": cmd_parsetlv,
+        "show_applications": cmd_show_applications,
     }
 
     def _real_send(self, apdu):

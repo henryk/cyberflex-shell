@@ -6,7 +6,7 @@ class Java_Card(Card):
     APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
     DRIVER_NAME = "Generic Java"
     APPLICATIONS = {
-        "muscle": "\xa0\x00\x00\x00\x01\x01"
+        "\xa0\x00\x00\x00\x01\x01": ("muscle", "MUSCLE applet")
     }
     
     def __init__(self, card = None):
@@ -22,8 +22,9 @@ class Java_Card(Card):
         """Select an application on the card. 
         application can be given either as hexadezimal aid or by symbolic name (if known)."""
         
-        if self.APPLICATIONS.has_key(application):
-            aid = self.APPLICATIONS[application]
+        s = [a for a,b in self.APPLICATIONS.items() if b[0].lower() == application.lower()]
+        if len(s) > 0:
+            aid = s[0]
         else:
             aid = binascii.a2b_hex("".join(application.split()))
         result = self.select_application(aid)

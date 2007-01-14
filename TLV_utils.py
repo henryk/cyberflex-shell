@@ -311,7 +311,7 @@ def decode(data, context = None, level = 0, tags=tags):
         interpretation = tags.get(context, tags.get(None, {})).get(tag, None)
         if interpretation is None:
             if not constructed: interpretation = [binary, "Unknown field"]
-            else: interpretation = [recurse, "Unknown structure", context]
+            else: interpretation = [recurse, "Unknown structure", ber_class in (0, 1) and context or None]
             
             interpretation[1] = "%s (%s class)" % (interpretation[1], BER_CLASSES[ber_class])
             interpretation = tuple(interpretation)

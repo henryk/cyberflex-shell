@@ -434,13 +434,12 @@ class TCOS_Security_Environment(object):
         self.keys[keyref] = keyvalue
 
 class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
-    DRIVER_NAME = "TCOS"
+    DRIVER_NAME = "TCOS 2.0"
     APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
     SELECT_P2 = 0x04
     
     ATRS = [
             ("3bba96008131865d0064........31809000..", None),
-            ("3bbf96008131fe5d0064........31c073f701d00090007d", None), # TCOS 3.0, FIXME: Create new class?
         ]
     
     file_status_descriptions = (
@@ -674,3 +673,12 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         "set_key": cmd_set_key,
         }
     
+class TCOS_3_Card(TCOS_Card):
+    DRIVER_NAME = "TCOS 3.0"
+    APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
+    SELECT_P2 = 0x04
+    LS_L_SIZE_TAG = 0x80
+    
+    ATRS = [
+            ("3bbf96008131fe5d0064........31c073f701d00090007d", None),
+        ]

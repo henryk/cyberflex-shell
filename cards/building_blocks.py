@@ -38,10 +38,10 @@ class Card_with_ls:
             response_DF = {}
             response_EF = {}
             for DF in dirs:
-                response_DF[DF] = self.select_file(0x01, 0x00, DF)
+                response_DF[DF] = self.select_file(0x01, self.SELECT_P2, DF)
                 self.select_file(0x03, 0x00, "")
             for EF in files:
-                response_EF[EF] = self.select_file(0x02, 0x00, EF)
+                response_EF[EF] = self.select_file(0x02, self.SELECT_P2, EF)
         
         self.sw_changed = False
         
@@ -57,7 +57,11 @@ class Card_with_ls:
             for FID in files:
                 name = " " + utils.hexdump(FID, short=True) + " "
                 type = "EF"
-                size = self._str_to_long(self._find_recursive(self.LS_L_SIZE_TAG, response_EF[FID].data))
+                v = self._find_recursive(self.LS_L_SIZE_TAG, response_EF[FID].data)
+                if v:
+                    size = self._str_to_long(v)
+                else:
+                    size = "n/a"
                 print self._ls_l_template % locals()
         else:
             print "\n".join( ["[%s]" % utils.hexdump(a, short=True) for a in dirs]

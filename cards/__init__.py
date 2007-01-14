@@ -185,3 +185,7 @@ class Cardmultiplexer:
                     have_one = True
             if have_one:
                 setattr(self, attr, tmplist)
+        
+        for cls in ordered_classes:
+            if hasattr(cls, "post_merge"):
+                cls.post_merge(self)

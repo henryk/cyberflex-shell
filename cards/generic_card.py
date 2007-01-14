@@ -34,7 +34,7 @@ class Card:
     APPLICATIONS = {
         ## The following are from 0341a.pdf: BSI-DSZ-CC-0341-2006
         "\xD2\x76\x00\x00\x66\x01":             ("DF_SIG",            "Signature application", {"fid": "\xAB\x00"}),
-        "\xD2\x76\x00\x00\x25\x5A\x41\x02":     ("ZA_MF_NEU",         "Zusatzanwendungen",     {"fid": "\xA7\x00"}),
+        "\xD2\x76\x00\x00\x25\x5A\x41\x02\x00": ("ZA_MF_NEU",         "Zusatzanwendungen",     {"fid": "\xA7\x00"}),
         "\xD2\x76\x00\x00\x25\x45\x43\x02\x00": ("DF_EC_CASH_NEU",    "ec-Cash",               {"fid": "\xA1\x00"}),
         "\xD2\x76\x00\x00\x25\x45\x50\x02\x00": ("DF_BOERSE_NEU",     "Geldkarte",             {"fid": "\xA2\x00"}),
         "\xD2\x76\x00\x00\x25\x47\x41\x01\x00": ("DF_GA_MAESTRO",     "GA-Maestro",            {"fid": "\xAC\x00"}),
@@ -47,6 +47,24 @@ class Card:
     APPLICATIONS["\xA0\x00\x00\x00\x59\x50\x41\x43\x45\x01\x00"] = APPLICATIONS["\xD2\x76\x00\x00\x25\x45\x50\x02\x00"]
     APPLICATIONS["\xA0\x00\x00\x00\x04\x30\x60"] = APPLICATIONS["\xD2\x76\x00\x00\x25\x47\x41\x01\x00"]
 
+    def _decode_df_name(self, value):
+        result = " " + utils.hexdump(value, short=True)
+        if self.APPLICATIONS.has_key(value):
+            info = self.APPLICATIONS[value]
+            result = result + "\nName:    \t%s" % info[0]
+            if len(info) > 1:
+                result = result +"\nDescription:\t%s" % info[1]
+        return result
+    
+    def decode_df_name(value):
+        # Static method for when there is no object reference
+        return Card._decode_df_name(value)
+    
+    TLV_OBJECTS[TLV_utils.context_FCP] = {
+        0x84: (decode_df_name, "DF name"),
+    }
+    TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
+    
     def __init__(self, card = None, reader = None):
         if card is None:
             if reader is None:
@@ -61,6 +79,11 @@ class Card:
         self.last_sw = None
         self.last_result = None
         self.sw_changed = False
+    
+    def post_merge(self):
+        ## Called after cards.__init__.Cardmultiplexer._merge_attributes
+        self.TLV_OBJECTS[TLV_utils.context_FCP][0x84] = (self._decode_df_name, "DF name")
+        self.TLV_OBJECTS[TLV_utils.context_FCI][0x84] = (self._decode_df_name, "DF name")
     
     def verify_pin(self, pin_number, pin_value):
         apdu = C_APDU(self.APDU_VERIFY_PIN, P2 = pin_number,

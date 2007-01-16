@@ -2,6 +2,7 @@ import TLV_utils
 from generic_card import *
 
 class ISO_7816_4_Card(Card):
+    APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
     APDU_SELECT_FILE = C_APDU(ins=0xa4)
     APDU_READ_BINARY = C_APDU(ins=0xb0,le=0)
     APDU_READ_RECORD = C_APDU(ins=0xb2,le=0)
@@ -117,6 +118,26 @@ class ISO_7816_4_Card(Card):
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
+    def select_application(self, aid):
+        result = self.send_apdu(
+            C_APDU(self.APDU_SELECT_APPLICATION,
+            data = aid, le = 0) ) ## FIXME With or without le
+        return result
+    
+    def cmd_selectapplication(self, application):
+        """Select an application on the card. 
+        application can be given either as hexadecimal aid or by symbolic name (if known)."""
+        
+        s = [a for a,b in self.APPLICATIONS.items() if b[0].lower() == application.lower()]
+        if len(s) > 0:
+            aid = s[0]
+        else:
+            aid = binascii.a2b_hex("".join(application.split()))
+        result = self.select_application(aid)
+        if len(result.data) > 0:
+            print utils.hexdump(result.data)
+            print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
+    
     ATRS = list(Card.ATRS)
     ATRS.extend( [
             (".*", None),   ## For now we accept any card
@@ -124,6 +145,7 @@ class ISO_7816_4_Card(Card):
     
     COMMANDS = dict(Card.COMMANDS)
     COMMANDS.update( {
+        "select_application": cmd_selectapplication,
         "select_file": cmd_selectfile,
         "cd": cmd_cd,
         "cat": cmd_cat,

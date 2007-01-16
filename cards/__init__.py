@@ -55,7 +55,7 @@ class Cardmultiplexer:
     provides support for merging some list and dictionary class attributes 
     of the participating classes instead of overriding them."""
     
-    MERGE_DICTS = ("APPLICATIONS", "COMMANDS", "STATUS_WORDS")
+    MERGE_DICTS = ("APPLICATIONS", "COMMANDS", "STATUS_WORDS", "VENDORS")
     MERGE_DICTS_RECURSIVE = ("TLV_OBJECTS", )
     MERGE_LISTS = ()
     

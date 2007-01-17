@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2007-01-12, 12:30:01 -->
+<!-- Saved: 2007-01-17, 10:14:44 -->
 <!-- Copyright (C) 2007 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -83,6 +83,9 @@
     <Source>
       <Dir>cards</Dir>
       <Name>seccos_card.py</Name>
+    </Source>
+    <Source>
+      <Name>parse-usbsnoop.py</Name>
     </Source>
   </Sources>
   <Forms>

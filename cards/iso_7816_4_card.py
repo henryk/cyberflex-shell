@@ -128,7 +128,7 @@ class ISO_7816_4_Card(Card):
         """Select an application on the card. 
         application can be given either as hexadecimal aid or by symbolic name (if known)."""
         
-        s = [a for a,b in self.APPLICATIONS.items() if b[0].lower() == application.lower()]
+        s = [a for a,b in self.APPLICATIONS.items() if b[0] is not None and b[0].lower() == application.lower()]
         if len(s) > 0:
             aid = s[0]
         else:

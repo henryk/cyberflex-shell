@@ -23,6 +23,7 @@ identifier("recurse")
 identifier("binary")
 identifier("number")
 identifier("ascii")
+identifier("utf8")
 
 file_descriptor_byte_descriptions = [
     #mask  byte  no match match
@@ -175,6 +176,33 @@ def decode_generalized_time(value):
         
         return "".join(result)
 
+_utimere = sre.compile(r'(\d\d)(\d\d)(\d\d)(\d\d)(?:(\d\d))?(Z|(?:[+-]\d\d(?:\d\d)?))$')
+def decode_utc_time(value):
+    matches = _utimere.match(value)
+    if not matches:
+        return " "+value
+    else:
+        matches = matches.groups()
+        result = [" %s-%s-%s %s:" % matches[:4]]
+        if matches[4] is not None:
+            result.append("%s:" % matches[4])
+            if matches[5] is not None:
+                result.append("%s" % matches[5])
+            else:
+                result.append("00")
+        else:
+            result.append(":00:00")
+        
+        if matches[6] == "Z":
+            result.append(" UTC")
+        elif matches[6] != "":
+            result.append(" ")
+            result.append(matches[6])
+            if len(matches[6]) < 5:
+                result.append("00")
+        
+        return "".join(result)
+
 def decode_bit_string(value):
     unused_len = ord(value[0])
     value = value[1:]
@@ -233,11 +261,13 @@ tags = {
         0x05: (lambda a: " Null", "Null"),
         0x06: (decode_oid, "Object identifier"),
         0x0A: (number, "Enumerated"),
+        0x0C: (utf8, "UTF-8 string"),
         0x12: (ascii, "Numeric string"),
         0x13: (ascii, "Printable string"),
         0x14: (ascii, "Teletex string"), ## FIXME: support escape sequences?
-        0x15: (ascii, "Videotex string"), ## dito
+        0x15: (ascii, "Videotext string"), ## dito
         0x16: (ascii, "IA5String"),
+        0x17: (decode_utc_time, "UTC time"),
         0x18: (decode_generalized_time, "Generalized time"),
         0x30: (recurse, "Sequence", None),
         0x31: (recurse, "Set", None),
@@ -330,6 +360,8 @@ def decode(data, context = None, level = 0, tags=tags):
             current.append( " 0x%02x (%i)" % (num, num))
         elif interpretation[0] is ascii:
             current.append( " %s" % value)
+        elif interpretation[0] is utf8:
+            current.append( " %s" % unicode(value, "utf-8"))
         elif interpretation[0] is binary:
             if len(value) < 0x10:
                 current.append( " %s" % utils.hexdump(value, short=True))

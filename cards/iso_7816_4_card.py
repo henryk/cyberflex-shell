@@ -1,5 +1,6 @@
 import TLV_utils
 from generic_card import *
+from generic_application import Application
 
 class ISO_7816_4_Card(Card):
     APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
@@ -122,13 +123,18 @@ class ISO_7816_4_Card(Card):
         result = self.send_apdu(
             C_APDU(self.APDU_SELECT_APPLICATION,
             data = aid, le = 0) ) ## FIXME With or without le
+        if result.sw == self.SW_OK:
+            Application.load_applications(self, aid)
         return result
     
     def cmd_selectapplication(self, application):
         """Select an application on the card. 
         application can be given either as hexadecimal aid or by symbolic name (if known)."""
         
-        s = [a for a,b in self.APPLICATIONS.items() if b[0] is not None and b[0].lower() == application.lower()]
+        s = [a for a,b in self.APPLICATIONS.items()
+                if (b[0] is not None and b[0].lower() == application.lower())
+                or (len(b) > 2 and application.lower() in [c.lower() for c in b[2].get("alias", [])])
+            ]
         if len(s) > 0:
             aid = s[0]
         else:

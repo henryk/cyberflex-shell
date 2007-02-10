@@ -34,8 +34,8 @@ class Card:
     APPLICATIONS = {
         "\xa0\x00\x00\x01\x67\x45\x53\x49\x47\x4e": ("DF.ESIGN", ),
         "\xa0\x00\x00\x00\x63\x50\x4b\x43\x53\x2d\x31\x35": ("DF_PKCS15", ),
-        "\xD2\x76\x00\x01\x24\x01": ("DF_OpenPGP", "OpenPGP card", {"significant_length": 6} ),
-        "\xa0\x00\x00\x02\x47\x10\x01": (None, "Machine Readable Travel Document"),
+        "\xD2\x76\x00\x01\x24\x01": ("DF_OpenPGP", "OpenPGP card",                             {"significant_length": 6} ),
+        "\xa0\x00\x00\x02\x47\x10\x01": ("DF_LDS", "Machine Readable Travel Document",         {"alias": ("mrtd",)}),
         ## The following are from 0341a.pdf: BSI-DSZ-CC-0341-2006
         "\xD2\x76\x00\x00\x66\x01":             ("DF_SIG",            "Signature application", {"fid": "\xAB\x00"}),
         "\xD2\x76\x00\x00\x25\x5A\x41\x02\x00": ("ZA_MF_NEU",         "Zusatzanwendungen",     {"fid": "\xA7\x00"}),
@@ -59,7 +59,7 @@ class Card:
         "\xD2\x76\x00\x00\x25": ("Bankenverlag", ),
         "\xD2\x76\x00\x00\x60": ("Wolfgang Rankl", ),
         "\xD2\x76\x00\x00\x05": ("Giesecke & Devrient", ),
-        "\xD2\x76\x00\x00\x40": ("Zentralinstitut für die Kassenaerztliche Versorgung in der Bundesrepublik Deutschland", ), # hpc-use-cases-01.pdf
+        "\xD2\x76\x00\x00\x40": ("Zentralinstitut fuer die Kassenaerztliche Versorgung in der Bundesrepublik Deutschland", ), # hpc-use-cases-01.pdf
         "\xa0\x00\x00\x02\x47": ("ICAO", ),
     }
 

@@ -95,7 +95,8 @@ class Cardmultiplexer:
         
         (newcls, delcls) = self._update_classes(list(classes), [])
         for cls in newcls:
-            cls.__init__(self, *self._init_args, **self._init_kwargs)
+            if hasattr(cls, "__init__"):
+                cls.__init__(self, *self._init_args, **self._init_kwargs)
         
         self._merge_attributes()
     

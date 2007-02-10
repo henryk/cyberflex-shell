@@ -1,6 +1,6 @@
-diff -u pycsc-0.0.3_/pycsc.c pycsc-0.0.3/pycsc.c
---- pycsc-0.0.3_/pycsc.c	2004-06-21 02:54:29.000000000 +0200
-+++ pycsc-0.0.3/pycsc.c	2006-05-03 04:51:51.000000000 +0200
+diff -u pycsc-0.0.3/pycsc.c pycsc-0.0.3_clean/pycsc.c
+--- pycsc-0.0.3/pycsc.c	2004-06-21 02:54:29.000000000 +0200
++++ pycsc-0.0.3_clean/pycsc.c	2007-02-10 03:05:38.000000000 +0100
 @@ -23,7 +23,7 @@
  #endif
  
@@ -27,6 +27,15 @@ diff -u pycsc-0.0.3_/pycsc.c pycsc-0.0.3/pycsc.c
              &dwState, &dwProt, NULL, &dwAtrLen );
  
    if ( rv != SCARD_S_SUCCESS )
+@@ -340,7 +340,7 @@
+ {  
+   pycscobject *object = (pycscobject *)self;
+   LONG rv;
+-  unsigned long len;
++  int len;
+   unsigned char *sendBuffer;
+   DWORD bSendPci;
+   SCARD_IO_REQUEST *pioSendPci;
 @@ -499,8 +499,8 @@
  static PyObject * pycscobject_pycsc(PyObject *self, PyObject * args, PyObject *keywds)
  {
@@ -63,9 +72,9 @@ diff -u pycsc-0.0.3_/pycsc.c pycsc-0.0.3/pycsc.c
    LONG  dwReaders;
    LONG rv;
  
-diff -u pycsc-0.0.3_/setup.py pycsc-0.0.3/setup.py
---- pycsc-0.0.3_/setup.py	2004-01-19 17:09:32.000000000 +0100
-+++ pycsc-0.0.3/setup.py	2006-05-03 04:48:34.000000000 +0200
+diff -u pycsc-0.0.3/setup.py pycsc-0.0.3_clean/setup.py
+--- pycsc-0.0.3/setup.py	2004-01-19 17:09:32.000000000 +0100
++++ pycsc-0.0.3_clean/setup.py	2007-02-10 03:05:25.000000000 +0100
 @@ -31,7 +31,7 @@
           include = []
      else:

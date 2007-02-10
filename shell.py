@@ -206,8 +206,9 @@ class Shell:
             command_to_match = groups[0] or ""
             retval = False
             
-            for cmdset in self._commandsets:
-                for (command, function) in cmdset[1].items():
+            for cmdset in self._commandsets: # OK
+                cmd_dict = cmdset[1] or cmdset[0].COMMANDS
+                for (command, function) in cmd_dict.items():
                     if command[:len(command_to_match)] == command_to_match:
                         found = found + 1
                         if found == state:
@@ -247,7 +248,7 @@ class Shell:
                 new_commands = target
             elif hasattr(target, "COMMANDS"):
                 new_target = target
-                new_commands = target.COMMANDS
+                new_commands = None # MUST be added on the fly later
             else:
                 raise TypeError, "target must be either an object with a COMMANDS attribute or a dictionary, not %s" % type(target)
         else:
@@ -265,12 +266,19 @@ class Shell:
         an object with a COMMANDS attribute or a dictionary mapping command
         strings to functions. When commands is given then target can be any
         object and commands must be a dictionary mapping command strings to
-        functions."""
+        functions.
+        
+        Note: When this method is called with an object with a COMMANDS 
+        attribute for the first parameter and no second parameter, then
+        the shell will follow all changes on that COMMANDS attribute, e.g.
+        you can dynamically add or remove commands from the COMMANDS 
+        attribute without the need to notify the shell object."""
         
         new_commandset = self._make_cmdset(target, commands)
         current_commands = self.get_command_mapping()
         
-        for (command,function) in new_commandset[1].items():
+        new_cmd_dict = new_commandset[1] or new_commandset[0].COMMANDS
+        for (command,function) in new_cmd_dict.items():
             if not hasattr(function, "__doc__"):
                 print >>sys.stderr, "Warning: function %s does not have a docstring, bug author" % function
             old_commandset = current_commands.get(command)
@@ -279,7 +287,7 @@ class Shell:
                     command, old_commandset[0] or "Anonymous list", new_target or "Anonymous list"
                 )
         
-        self._commandsets.append( new_commandset )
+        self._commandsets.append( new_commandset ) # OK
     
     def unregister_commands(self, target, commands=None):
         """Unregister an object to provide commands.
@@ -287,20 +295,25 @@ class Shell:
         register_commands()."""
         
         old_commandset = self._make_cmdset(target, commands)
-        return self._commandsets.remove( old_commandset )
+        return self._commandsets.remove( old_commandset ) # OK
     
     def get_command_mapping(self):
-        """Returns a dictionary that maps commands to their commandsets."""
+        """Returns a dictionary that maps commands to their commandsets.
+        NOTE: The return value might be generated on the fly and MUST NOT be cached
+        beyond the scope of the calling function."""
         commands = {}
-        for cmdset in self._commandsets:
-            for (command, function) in cmdset[1].items():
-                commands[command] = cmdset
+        for cmdset in self._commandsets: # OK
+            cmd_dict = cmdset[1] or cmdset[0].COMMANDS
+            on_the_fly_cmdset = (cmdset[0], cmd_dict)
+            for (command, function) in cmd_dict.items():
+                commands[command] = cmdset[1] and cmdset or on_the_fly_cmdset
         return commands
     
     def has_command(self, name):
         """Returns whether this shell knows about a specified command."""
-        for cmdset in self._commandsets:
-            for (command, function) in cmdset[1].items():
+        for cmdset in self._commandsets: # OK
+            cmd_dict = cmdset[1] or cmdset[0].COMMANDS
+            for (command, function) in cmd_dict.items():
                 if command == name:
                     return True
         return False
@@ -309,8 +322,9 @@ class Shell:
         """Return a dictionary with help about command named name. The dictionary
         keys are:  name, formatted_parameters, description, long_description"""
         
-        for cmdset in self._commandsets:
-            for (command, function) in cmdset[1].items():
+        for cmdset in self._commandsets: # OK
+            cmd_dict = cmdset[1] or cmdset[0].COMMANDS
+            for (command, function) in cmd_dict.items():
                 if command == name:
                     parts = function.__doc__.split("\n", 1)
                     if len(parts) != 2:

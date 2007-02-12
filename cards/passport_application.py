@@ -1,7 +1,70 @@
 from generic_application import Application
 import struct, sha, binascii
 from utils import hexdump, C_APDU
-import crypto_utils
+from tcos_card import SE_Config, TCOS_Security_Environment
+import crypto_utils, tcos_card
+
+class Passport_Security_Environment(TCOS_Security_Environment):
+    def __init__(self, card):
+        TCOS_Security_Environment.__init__(self, card)
+        self.last_vanilla_c_apdu = None
+        
+        # Set up a fake SE config to be able to reuse the TCOS code
+        self.set_key( 1, self.card.KSenc)
+        enc_config = "\x80\x01\x0d\x83\x01\x01\x85\x00"
+        self.set_key( 2, self.card.KSmac)
+        mac_config = "\x80\x01\x0d\x83\x01\x02\x85\x00"
+        
+        self.set_config( tcos_card.SE_APDU,  tcos_card.TEMPLATE_CCT, SE_Config(mac_config) )
+        self.set_config( tcos_card.SE_RAPDU, tcos_card.TEMPLATE_CCT, SE_Config(mac_config) )
+        
+        self.set_config( tcos_card.SE_APDU,  tcos_card.TEMPLATE_CT, SE_Config(enc_config) )
+        self.set_config( tcos_card.SE_RAPDU, tcos_card.TEMPLATE_CT, SE_Config(enc_config) )
+    
+    def before_send(self, apdu):
+        self.last_vanilla_c_apdu = C_APDU(apdu)
+        if (apdu.cla & 0x80 != 0x80) and (apdu.CLA & 0x0C != 0x0C):
+            # Transform for SM
+            apdu.CLA = apdu.CLA | 0x0C
+            apdu_string = binascii.b2a_hex(apdu.render())
+            new_apdu = [apdu_string[:8]]
+            new_apdu.append("YY")
+            
+            if apdu.case() in (3,4):
+                new_apdu.append("87[01")
+                new_apdu.append(binascii.b2a_hex(apdu.data))
+                new_apdu.append("]")
+            
+            if apdu.case() in (2,4):
+                if apdu.Le == 0:
+                    apdu.Le = 0xff # FIXME: Probably not the right way
+                new_apdu.append("97(%02x)" % apdu.Le)
+            
+            new_apdu.append("8E()00")
+            
+            new_apdu_string = "".join(new_apdu)
+            apdu = C_APDU.parse_fancy_apdu(new_apdu_string)
+        
+        return TCOS_Security_Environment.before_send(self, apdu)
+    
+    def after_send(self, result):
+        if (self.last_vanilla_c_apdu.cla & 0x80 != 0x80) and (self.last_vanilla_c_apdu.CLA & 0x0C != 0x0C):
+            # Inject fake response descriptor so that TCOS_Security_Environment.after_send sees the need to authenticate/decrypt
+            response_descriptor = "\x99\x00\x8e\x00"
+            if self.last_vanilla_c_apdu.case() in (2,4):
+                response_descriptor = "\x87\x00" + response_descriptor
+            response_descriptor = "\xba" + chr(len(response_descriptor)) + response_descriptor
+            
+            self.last_c_apdu.data = self.last_c_apdu.data + response_descriptor
+        
+        return TCOS_Security_Environment.after_send(self, result)
+
+    
+    def _mac(self, data):
+        (ssc,) = struct.unpack(">Q", self.card.ssc)
+        ssc = ssc + 1
+        self.card.ssc = struct.pack(">Q", ssc)
+        return Passport_Application._mac(self.card.KSmac, data, self.card.ssc, dopad=False)
 
 class Passport_Application(Application):
     DRIVER_NAME = "Passport"
@@ -17,6 +80,7 @@ class Passport_Application(Application):
         self.ssc = None
         self.KSenc = None
         self.KSmac = None
+        self.se = None
     
     def derive_key(Kseed, c):
         """Derive a key according to TR-PKI mrtds ICC read-only access v1.1 annex E.1.
@@ -106,17 +170,35 @@ class Passport_Application(Application):
         self.KSmac = self.derive_key(KSseed, 2)
         self.ssc = rnd_icc[-4:] + rnd_ifd[-4:]
         
+        if False:
+            self.KSenc = binascii.a2b_hex("979EC13B1CBFE9DCD01AB0FED307EAE5")
+            self.KSmac = binascii.a2b_hex("F1CB1F1FB5ADF208806B89DC579DC1F8")
+            self.ssc =   binascii.a2b_hex("887022120C06C226")
+        
         if verbose:
             print "KSseed  = %s" % hexdump(KSseed)
             print "KSenc   = %s" % hexdump(self.KSenc)
             print "KSmac   = %s" % hexdump(self.KSmac)
             print "ssc     = %s" % hexdump(self.ssc)
+        
+        self.se = Passport_Security_Environment(self)
     
-    def _mac(key, data, ssc = None):
+    def before_send(self, apdu):
+        if self.se:
+            apdu = self.se.before_send(apdu)
+        return apdu
+    
+    def after_send(self, result):
+        if self.se:
+            result = self.se.after_send(result)
+        return result
+    
+    def _mac(key, data, ssc = None, dopad=True):
         if ssc:
             data = ssc + data
-        topad = 8 - len(data) % 8
-        data = data + "\x80" + ("\x00" * (topad-1))
+        if dopad:
+            topad = 8 - len(data) % 8
+            data = data + "\x80" + ("\x00" * (topad-1))
         a = crypto_utils.cipher(True, "des-cbc", key[:8], data)
         b = crypto_utils.cipher(False, "des-ecb", key[8:16], a[-8:])
         c = crypto_utils.cipher(True, "des-ecb", key[:8], b)
@@ -132,6 +214,10 @@ class Passport_Application(Application):
             urand.close()
         return r
     _make_random = staticmethod(_make_random)
+    
+    def get_prompt(self):
+        return "(%s)%s" % (self.DRIVER_NAME, self.se and "[SM]" or "")
+
     
     COMMANDS = {
         "perform_bac": cmd_perform_bac,

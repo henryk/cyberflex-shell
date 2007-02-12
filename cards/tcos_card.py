@@ -126,8 +126,8 @@ class TCOS_Security_Environment(object):
                         tlv_data = self.decrypt_response(tlv_data)
                     
                     #data = TLV_utils.pack(tlv_data, recalculate_length = True)
-                    data = self.deformat_response(tlv_data)
-                    new_apdu = R_APDU(rapdu, data = data)
+                    data, sw = self.deformat_response(tlv_data, rapdu.sw)
+                    new_apdu = R_APDU(rapdu, data = data, sw = sw)
                     
                     result = new_apdu
                 except ValueError:
@@ -137,8 +137,8 @@ class TCOS_Security_Environment(object):
         
         return result
     
-    def deformat_response(self, tlv_data):
-        WHITELIST = (0x84, 0x86)
+    def deformat_response(self, tlv_data, sw):
+        WHITELIST = (0x84, 0x86, 0x98)
         
         result = []
         is_ok = True
@@ -154,6 +154,10 @@ class TCOS_Security_Environment(object):
                 if t in WHITELIST:
                     if t == 0x86:
                         result.append( value[1:] )
+                    elif t == 0x98:
+                        if sw != value:
+                            print "Warning: SW from SM not equal SW from RAPDU"
+                        sw = value
                     else:
                         result.append( value )
                 else:
@@ -161,7 +165,7 @@ class TCOS_Security_Environment(object):
         else:
             result.append( TLV_utils.pack( tlv_data, recalculate_length = True) )
         
-        return "".join(result)
+        return "".join(result), sw
 
     def encrypt_command(self, tlv_data):
         config = self.get_config(SE_APDU, TEMPLATE_CT)

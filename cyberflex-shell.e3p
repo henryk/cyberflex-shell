@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2007-01-17, 10:14:44 -->
+<!-- Saved: 2007-02-11, 06:20:08 -->
 <!-- Copyright (C) 2007 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -87,6 +87,14 @@
     <Source>
       <Name>parse-usbsnoop.py</Name>
     </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>passport_application.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>generic_application.py</Name>
+    </Source>
   </Sources>
   <Forms>
   </Forms>
@@ -97,7 +105,7 @@
   <Others>
   </Others>
   <Vcs>
-    <VcsType>CVS</VcsType>
+    <VcsType>None</VcsType>
     <VcsOptions>{'status': [u'-v'], 'log': [], 'global': [u'-f'], 'update': [u'-dP'], 'remove': [u'-f'], 'add': [], 'tag': [u'-c'], 'export': [], 'diff': [u'-u3', u'-p'], 'commit': [], 'checkout': [], 'history': [u'-e', u'-a']}</VcsOptions>
     <VcsOtherData>{}</VcsOtherData>
   </Vcs>

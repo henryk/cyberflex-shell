@@ -43,6 +43,13 @@ def cipher(do_encrypt, cipherspec, key, data, iv = None):
     del cipher
     return result
     
+def operation_on_string(string1, string2, op):
+    if len(string1) != len(string2):
+        raise ValueError, "string1 and string2 must be of equal length"
+    result = []
+    for i in range(len(string1)):
+        result.append( chr(op(ord(string1[i]),ord(string2[i]))) )
+    return "".join(result)
 
 
 ## *******************************************************************
@@ -89,12 +96,7 @@ def generate_host_challenge():
     return "".join([chr(random.randint(0,255)) for e in range(8)])
 
 def andstring(string1, string2):
-    if len(string1) != len(string2):
-        raise ValueError, "string1 and string2 must be of equal length"
-    result = []
-    for i in range(len(string1)):
-        result.append( chr(ord(string1[i]) & ord(string2[i])) )
-    return "".join(result)
+    return operation_on_string(string1, string2, lambda a,b: a & b)
     
 if __name__ == "__main__":
     default_key = binascii.a2b_hex("404142434445464748494A4B4C4D4E4F")

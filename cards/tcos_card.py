@@ -304,17 +304,20 @@ class TCOS_Security_Environment(object):
         if len(block) > 0:
             do_block(buffer, block)
         
-        cct = crypto_utils.cipher( True, 
-            self.get_cipherspec(config),
-            self.get_key(config),
-            "".join(buffer),
-            self.get_iv(config) )[-8:]
+        cct = self._mac("".join(buffer))
         
         if print_buffer:
             print "| Result (Tag 0x8e, length: 0x%02x):" % len(cct)
             print "|| " + "\n|| ".join( utils.hexdump( cct ).splitlines() )
         
         return cct
+    
+    def _mac(self, data):
+        return crypto_utils.cipher( True, 
+            self.get_cipherspec(config),
+            self.get_key(config),
+            data,
+            self.get_iv(config) )[-8:]
     
     def authenticate_command(self, apdu, tlv_data):
         config = self.get_config(SE_APDU, TEMPLATE_CCT)

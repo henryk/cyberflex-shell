@@ -1,4 +1,4 @@
-import pycsc, string, binascii, sys
+import pycsc, string, binascii, sys, re
 
 def represent_binary_fancy(len, value, mask = 0):
     result = []
@@ -299,6 +299,131 @@ class C_APDU(APDU):
                 return 3
             else:
                 return 4
+    
+    _apduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}$', re.I)
+    _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|:|\)|\(|\[|\])\s*)*$', re.I)
+    @staticmethod
+    def parse_fancy_apdu(*args):
+        apdu_string = " ".join(args)
+        if not C_APDU._fancyapduregex.match(apdu_string):
+            raise ValueError
+        
+        apdu_string = apdu_string.lower()
+        have_le = False
+        pos = apdu_string.find("xx")
+        if pos == -1:
+            pos = apdu_string.find("yy")
+            have_le = True
+        
+        apdu_head = ""
+        apdu_tail = apdu_string
+        if pos != -1:
+            apdu_head = apdu_string[:pos]
+            apdu_tail = apdu_string[pos+2:]
+        
+        if apdu_head.strip() != "" and not C_APDU._apduregex.match(apdu_head):
+            raise ValueError
+        
+        class Node(list):
+            def __init__(self, parent = None, type = None):
+                list.__init__(self)
+                self.parent = parent
+                self.type = type
+            
+            def make_binary(self):
+                "Recursively transform hex strings to binary"
+                for index, child in enumerate(self):
+                    if isinstance(child,str):
+                        child = "".join( ("".join(child.split())).split(":") )
+                        assert len(child) % 2 == 0
+                        self[index] = binascii.a2b_hex(child)
+                    else:
+                        child.make_binary()
+            
+            def calculate_lengths(self):
+                "Recursively calculate lengths and insert length counts"
+                self.length = 0
+                index = 0
+                while index < len(self): ## Can't use enumerate() due to the insert() below
+                    child = self[index]
+                    
+                    if isinstance(child,str):
+                        self.length = self.length + len(child)
+                    else:
+                        child.calculate_lengths()
+                        
+                        formatted_len = binascii.a2b_hex("%02x" % child.length) ## FIXME len > 255?
+                        self.length = self.length + len(formatted_len) + child.length
+                        self.insert(index, formatted_len)
+                        index = index + 1
+                    
+                    index = index + 1
+            
+            def flatten(self, offset = 0, ignore_types=["("]):
+                "Recursively flatten, gather list of marks"
+                string_result = []
+                mark_result = []
+                for child in self:
+                    if isinstance(child,str):
+                        string_result.append(child)
+                        offset = offset + len(child)
+                    else:
+                        start = offset
+                        child_string, child_mark = child.flatten(offset, ignore_types)
+                        string_result.append(child_string)
+                        offset = end = offset + len(child_string)
+                        if not child.type in ignore_types:
+                            mark_result.append( (child.type, start, end) )
+                        mark_result.extend(child_mark)
+                
+                return "".join(string_result), mark_result
+        
+        
+        tree = Node()
+        current = tree
+        allowed_parens = {"(": ")", "[":"]"}
+        
+        for pos,char in enumerate(apdu_tail):
+            if char in (" ", "a", "b", "c", "d", "e", "f",":") or char.isdigit():
+                if len(current) > 0 and isinstance(current[-1],str):
+                    current[-1] = current[-1] + char
+                else:
+                    current.append(str(char))
+                
+            elif char in allowed_parens.values():
+                if current.parent is None:
+                    raise ValueError
+                if allowed_parens[current.type] != char:
+                    raise ValueError
+                
+                current = current.parent
+                
+            elif char in allowed_parens.keys():
+                current.append( Node(current, char) )
+                current = current[-1]
+                
+            else:
+                raise ValueError
+        
+        if current != tree:
+            raise ValueError
+        
+        tree.make_binary()
+        tree.calculate_lengths()
+        
+        apdu_head = apdu_head.strip()
+        if apdu_head != "":
+            l = tree.length
+            if have_le: 
+                l = l - 1 ## FIXME Le > 255?
+            formatted_len = "%02x" % l  ## FIXME len > 255?
+            apdu_head = binascii.a2b_hex("".join( (apdu_head + formatted_len).split() ))
+        
+        apdu_tail, marks = tree.flatten(offset=0)
+        
+        apdu = C_APDU(apdu_head + apdu_tail, marks = marks)
+        return apdu
+
 
 class R_APDU(APDU):
     "Class for a response APDU"

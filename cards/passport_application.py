@@ -231,9 +231,27 @@ class Passport_Application(Application):
     def get_prompt(self):
         return "(%s)%s" % (self.DRIVER_NAME, self.se and "[SM]" or "")
 
+    def _read_ef(self, fid):
+        result = self.open_file(fid, 0x0c)
+        if not result.sw == "\x6a\x82":
+            self.cmd_cat()
+            self.cmd_parsetlv()
+    
+    def cmd_read_com(self):
+        "Read EF.COM"
+        return self._read_ef("\x01\x1e")
+    def cmd_read_sod(self):
+        "Read EF.SOD"
+        return self._read_ef("\x01\x1d")
+    def cmd_read_dg(self, dg):
+        "Read EF.DGx"
+        return self._read_ef("\x01"+chr(int(dg,0)))
     
     COMMANDS = {
         "perform_bac": cmd_perform_bac,
+        "read_com": cmd_read_com,
+        "read_sod": cmd_read_sod,
+        "read_dg": cmd_read_dg,
     }
     
     DATA_GROUPS = {

@@ -4,7 +4,9 @@ from generic_card import *
 class GSM_Card(Card):
     DRIVER_NAME = "GSM"
     APDU_GET_RESPONSE = C_APDU("\xa0\xC0\x00\x00")
-    SW1_RETRY = 0x9F
+    STATUS_MAP = {
+        PURPOSE_RETRY: ("9F??", )
+    }
     
     ATRS = [ 
         ("3bff9500ffc00a1f438031e073f62113574a334861324147d6", None),

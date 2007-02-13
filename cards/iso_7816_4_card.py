@@ -72,7 +72,7 @@ class ISO_7816_4_Card(Card):
                 contents = contents + result.data
                 offset = offset + len(result.data)
             
-            if result.sw != self.SW_OK:
+            if not self.check_sw(result.sw):
                 break
             else:
                 had_one = True
@@ -123,7 +123,7 @@ class ISO_7816_4_Card(Card):
         result = self.send_apdu(
             C_APDU(self.APDU_SELECT_APPLICATION,
             data = aid, le = 0) ) ## FIXME With or without le
-        if result.sw == self.SW_OK:
+        if self.check_sw(result.sw):
             Application.load_applications(self, aid)
         return result
     

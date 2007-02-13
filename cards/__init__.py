@@ -56,7 +56,7 @@ class Cardmultiplexer:
     of the participating classes instead of overriding them."""
     
     MERGE_DICTS = ("APPLICATIONS", "COMMANDS", "STATUS_WORDS", "VENDORS")
-    MERGE_DICTS_RECURSIVE = ("TLV_OBJECTS", )
+    MERGE_DICTS_RECURSIVE = ("TLV_OBJECTS",  "STATUS_MAP")
     MERGE_LISTS = ()
     
     def __init__(self, classes, *args, **kwargs):
@@ -146,9 +146,8 @@ class Cardmultiplexer:
     def _merge_attributes(self):
         """Update the local copy of merged attributes."""
         
-        is_descendant = lambda a,b: b in _inspect.getmro(a)
         ordered_classes = list(self._classes)
-        ordered_classes.sort(cmp=lambda a,b: (a!=b and ( is_descendant(a,b) and 1 or -1 ) or 0))
+        ordered_classes.sort(cmp=lambda a,b: (a!=b and ( issubclass(a,b) and -1 or 1 ) or 0))
         
         for attr in self.MERGE_DICTS + self.MERGE_DICTS_RECURSIVE:
             tmpdict = {}
@@ -165,6 +164,10 @@ class Cardmultiplexer:
                                         recurse( target[key], value )
                                     elif isinstance(value, dict):
                                         target[key] = dict(value)
+                                    elif isinstance(value, (tuple,list)) and isinstance(target[key], list):
+                                        target[key].extend( [e for e in value if not e in target[key]] )
+                                    elif isinstance(value, (tuple,list)) and isinstance(target[key], tuple):
+                                        target[key] = tuple( list(target[key]) + [e for e in value if not e in target[key]] )
                                     else:
                                         target[key] = value
                                 else:

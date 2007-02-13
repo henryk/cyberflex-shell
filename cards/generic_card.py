@@ -4,12 +4,22 @@ from utils import C_APDU, R_APDU
 DEBUG = True
 #DEBUG = False
 
+## Constants for check_sw()
+PURPOSE_SUCCESS = 1 # Command executed successful
+PURPOSE_RETRY = 2   # Command executed successful but needs retry with correct length
+PURPOSE_SM_OK = 3   # Command not executed successful or with warnings, but response still contains SM objects
+
 class Card:
     DRIVER_NAME = "Generic"
     APDU_GET_RESPONSE = C_APDU(ins=0xc0)
     APDU_VERIFY_PIN = C_APDU(ins=0x20)
-    SW_OK = '\x90\x00'
-    SW1_RETRY = 0x61 ## If this SW1 is received then GET RESPONSE should be called with SW2
+    PURPOSE_SUCCESS, PURPOSE_RETRY, PURPOSE_SM_OK = PURPOSE_SUCCESS, PURPOSE_RETRY, PURPOSE_SM_OK
+    ## Map for check_sw()
+    STATUS_MAP = {
+        PURPOSE_SUCCESS: ("\x90\x00", ),
+        PURPOSE_RETRY: ("61??", ), ## If this is received then GET RESPONSE should be called with SW2
+        PURPOSE_SM_OK: ("\x90\x00",)
+    }
     ## Note: an item in this list must be a tuple of (atr, mask) where atr is a binary
     ##   string and mask a binary mask. Alternatively mask may be None, then ATR must be a regex
     ##   to match on the ATRs hexlify representation
@@ -22,7 +32,7 @@ class Card:
     ## keyword substitutions for SW1 and SW2 or a callable accepting two arguments 
     ## (SW1, SW2) that returns a string.
     STATUS_WORDS = { 
-        SW_OK: "Normal execution",
+        '\x90\x00': "Normal execution",
         '61??': "%(SW2)i (0x%(SW2)02x) bytes of response data can be retrieved with GetResponse.",
         '6C??': "Bad value for LE, 0x%(SW2)02x is the correct value.",
         '63C?': lambda SW1,SW2: "The counter has reached the value '%i'" % (SW2%16)
@@ -62,7 +72,7 @@ class Card:
         "\xD2\x76\x00\x00\x40": ("Zentralinstitut fuer die Kassenaerztliche Versorgung in der Bundesrepublik Deutschland", ), # hpc-use-cases-01.pdf
         "\xa0\x00\x00\x02\x47": ("ICAO", ),
     }
-
+    
     def _decode_df_name(self, value):
         result = " " + utils.hexdump(value, short=True)
         info = None
@@ -126,7 +136,7 @@ class Card:
         apdu = C_APDU(self.APDU_VERIFY_PIN, P2 = pin_number,
             data = pin_value)
         result = self.send_apdu(apdu)
-        return result.sw == self.SW_OK
+        return self.check_sw(result.sw)
     
     def cmd_verify(self, pin_number, pin_value):
         """Verify a PIN."""
@@ -191,7 +201,7 @@ class Card:
     def _send_with_retry(self, apdu):
         result = self._real_send(apdu)
         
-        if result.sw1 == self.SW1_RETRY:
+        if self.check_sw(result.sw, PURPOSE_RETRY):
             ## Need to call GetResponse
             gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result.sw2) # FIXME
             result = R_APDU(self._real_send(gr_apdu))
@@ -217,6 +227,10 @@ class Card:
         self.last_result = result
         return result
     
+    def check_sw(self, sw, purpose = None):
+        if purpose is None: purpose = Card.PURPOSE_SUCCESS
+        return self.match_statusword(self.STATUS_MAP[purpose], sw)
+    
     def can_handle(cls, card):
         """Determine whether this class can handle a given pycsc object."""
         ATR = card.status().get("ATR","")
@@ -235,33 +249,42 @@ class Card:
     def get_prompt(self):
         return "(%s)" % self.DRIVER_NAME
     
+    def match_statusword(swlist, sw):
+        """Try to find sw in swlist. 
+        swlist must be a list of either binary statuswords (two bytes), hexadecimal statuswords (four bytes) or fnmatch patterns on a hexadecimal statusword.
+        Returns: The element that matched (either two bytes, four bytes or the fnmatch pattern)."""
+        if sw in swlist:
+            return sw
+        sw = binascii.hexlify(sw).upper()
+        if sw in swlist:
+            return sw
+        for value in swlist:
+            if fnmatch.fnmatch(sw, value):
+                return value
+        return None
+    match_statusword = staticmethod(match_statusword)
+    
     def decode_statusword(self):
         if self.last_sw is None:
             return "No command executed so far"
         else:
             retval = None
             
-            retval = self.STATUS_WORDS.get(self.last_sw)
+            matched_sw = self.match_statusword(self.STATUS_WORDS.keys(), self.last_sw)
+            if matched_sw is not None:
+                retval = self.STATUS_WORDS.get(matched_sw)
+                if isinstance(retval, str):
+                    retval = retval % { "SW1": ord(self.last_sw[0]), 
+                        "SW2": ord(self.last_sw[1]) }
+                    
+                elif callable(retval):
+                    retval = retval( ord(self.last_sw[0]),
+                        ord(self.last_sw[1]) )
+            
             if retval is None:
-                retval = self.STATUS_WORDS.get(binascii.hexlify(self.last_sw).upper())
-            if retval is None:
-                target = binascii.b2a_hex(self.last_sw).upper()
-                for (key, value) in self.STATUS_WORDS.items():
-                    if fnmatch.fnmatch(target, key):
-                        if isinstance(value, str):
-                            retval = value % { "SW1": ord(self.last_sw[0]), 
-                                "SW2": ord(self.last_sw[1]) }
-                            break
-                            
-                        elif callable(value):
-                            retval = value( ord(self.last_sw[0]),
-                                ord(self.last_sw[1]) )
-                            break
-        
-        if retval is None:
-            return "Unknown SW (SW %s)" % binascii.b2a_hex(self.last_sw)
-        else:
-            return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
+                return "Unknown SW (SW %s)" % binascii.b2a_hex(self.last_sw)
+            else:
+                return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
     
     def get_protocol(self):
         return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]

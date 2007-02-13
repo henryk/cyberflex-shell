@@ -80,10 +80,10 @@ class Cyberflex_Shell(Shell):
             
             self.parse_and_execute(line)
             
-            if self.card.sw_changed and self.card.last_sw != self.card.SW_OK \
+            if self.card.sw_changed and not self.card.check_sw(self.card.last_sw) \
                     and self.card.last_sw not in ignored_SWs:
                 
-                print "SW was not %s. Ignore (i) or Abort (a)? " % binascii.hexlify(self.card.SW_OK),
+                print "SW was not OK. Ignore (i) or Abort (a)? ",
                 answer = sys.stdin.readline()
                 if answer[0].lower() in ('i', "\n"):
                     pass

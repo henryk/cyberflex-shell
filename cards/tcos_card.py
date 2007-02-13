@@ -77,7 +77,7 @@ class TCOS_Security_Environment(object):
     
     def after_send(self, result):
         self.last_r_apdu = result
-        if result.sw == self.card.SW_OK:
+        if self.card.check_sw(result.sw, self.card.PURPOSE_SM_OK):
             if (self.last_c_apdu.cla & 0xf0) == 0x00:
                 if self.last_c_apdu.ins == 0x22:
                     self.parse_mse(self.last_c_apdu)

@@ -86,7 +86,9 @@ if __name__ == "__main__":
     del exit_now
 
     if len(arguments) > 0:
-        top_level = binascii.unhexlify("".join( ["".join(e.split()) for e in arguments] ))
+        top_level = ("".join( ["".join(e.split()) for e in arguments] )).split("/")
+        top_level = [binascii.unhexlify(e) for e in top_level]
+        
 
     pycsc_card = connect(reader)
     card = cards.new_card_object(pycsc_card)
@@ -96,10 +98,11 @@ if __name__ == "__main__":
 
     card.change_dir()
     if top_level is not None:
-        card.change_dir(top_level)
+        for e in top_level: card.change_dir(e)
     
     #objective = (0x2f00, 0x5015) ## Test cases on an OpenSC formatted PKCS#15 card
-    objective = range(0xffff) 
+    objective = range(0xffff+1) 
+    #objective = range(0x3fff+1) + range(0x7000,0x7fff+1) + range(0xc000,0xd4ff+1) + range(0xd600+1,0xd7ff+1) + range(0xdc00+1,0xffff+1)
     for fid in objective:
         data = chr(fid >> 8) + chr(fid & 0xff)
         if loop % STATUS_INTERVAL == 0:
@@ -113,16 +116,16 @@ if __name__ == "__main__":
         loop = loop + 1
         
         result = card.change_dir(data)
-        if result.sw == card.SW_OK:
+        if card.check_sw(result.sw):
             results_dir[fid] = result
             card.change_dir()
             if top_level is not None:
-                card.change_dir(top_level)
+                for e in top_level: card.change_dir(e)
         
         print >>sys.stderr, "\rDir  %04X -> %02X%02X %s" % (fid, result.sw1, result.sw2, status),
         
         result = card.open_file(data)
-        if result.sw == card.SW_OK:
+        if card.check_sw(result.sw):
             results_file[fid] = result
         
         print >>sys.stderr, "\rFile %04X -> %02X%02X %s" % (fid, result.sw1, result.sw2, status),
@@ -140,12 +143,12 @@ if __name__ == "__main__":
         print "Dir\t%04X" % fid
         if len(result.data) > 0:
             print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data)
+            print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
     
     for fid, result in results_file.items():
         print "-"*80
         print "File\t%04X" % fid
         if len(result.data) > 0:
             print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data)
+            print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
 

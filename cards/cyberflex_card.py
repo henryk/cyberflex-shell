@@ -117,7 +117,7 @@ class Cyberflex_Card(Java_Card):
         self.session_key_mac = None
         
         result = self.send_apdu(apdu)
-        if result.sw != self.SW_OK:
+        if not self.check_sw(result.sw):
             raise Exception, "Statusword after InitializeUpdate was %s. Warning: No successful ExternalAuthenticate; keyset might be locked soon" % binascii.b2a_hex(result[-2:])
         
         card_challenge = result.data[12:20]
@@ -143,7 +143,7 @@ class Cyberflex_Card(Java_Card):
         result = self.send_apdu(apdu)
         self.secure_channel_state = security_level
         
-        if result.sw != self.SW_OK:
+        if not self.check_sw(result.sw):
             self.secure_channel_state = SECURE_CHANNEL_NONE
             raise Exception, "Statusword after ExternalAuthenticate was %s. Warning: No successful ExternalAuthenticate; keyset might be locked soon" % binascii.b2a_hex(result[-2:])
         
@@ -151,7 +151,7 @@ class Cyberflex_Card(Java_Card):
     
     def select_application(self, aid):
         result = Java_Card.select_application(self, aid)
-        if self.last_sw == self.SW_OK and aid[:5] != DEFAULT_CARD_MANAGER_AID[:5]:
+        if self.check(self.last_sw) and aid[:5] != DEFAULT_CARD_MANAGER_AID[:5]:
             self.secure_channel_state = SECURE_CHANNEL_NONE
         return result
     

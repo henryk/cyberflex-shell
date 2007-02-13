@@ -2,6 +2,7 @@ from generic_application import Application
 import struct, sha, binascii
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
+from generic_card import Card
 import crypto_utils, tcos_card
 
 class Passport_Security_Environment(TCOS_Security_Environment):
@@ -37,7 +38,7 @@ class Passport_Security_Environment(TCOS_Security_Environment):
             
             if apdu.case() in (2,4):
                 if apdu.Le == 0:
-                    apdu.Le = 0xff # FIXME: Probably not the right way
+                    apdu.Le = 0xe7 # FIXME: Probably not the right way
                 new_apdu.append("97(%02x)" % apdu.Le)
             
             new_apdu.append("8E()00")
@@ -70,11 +71,14 @@ class Passport_Application(Application):
     DRIVER_NAME = "Passport"
     APDU_GET_RANDOM = C_APDU(CLA=0, INS=0x84, Le=0x08)
     APDU_MUTUAL_AUTHENTICATE = C_APDU(CLA=0, INS=0x82, Le=0x28)
-    SW_OK = "\x90\x00"
     
     AID_LIST = [
         "a0000002471001"
     ]
+    STATUS_MAP = {
+        Card.PURPOSE_SM_OK: ("6282", "6982")
+    }
+
     
     def __init__(self, *args, **kwargs):
         self.ssc = None
@@ -116,7 +120,7 @@ class Passport_Application(Application):
         
         print
         result = self.send_apdu(self.APDU_GET_RANDOM)
-        assert result.sw == self.SW_OK
+        assert self.check_sw(result.sw)
         
         rnd_icc = result.data
         if verbose:
@@ -139,7 +143,7 @@ class Passport_Application(Application):
         print
         auth_apdu = C_APDU(self.APDU_MUTUAL_AUTHENTICATE, data = Eifd + Mifd)
         result = self.send_apdu(auth_apdu)
-        assert result.sw == self.SW_OK
+        assert self.check_sw(result.sw)
         
         resp_data = result.data
         Eicc = resp_data[:-8]

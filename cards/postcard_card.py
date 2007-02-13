@@ -8,6 +8,9 @@ class Postcard_Card(ISO_7816_4_Card):
     APDU_SELECT_FILE = C_APDU(cla=CLA,ins=0xa4)
     APDU_READ_BINARY = C_APDU(cla=CLA,ins=0xb0,le=0x80)
 
+    STATUS_MAP = {
+        Card.PURPOSE_SUCCESS: ("90[124]0", )
+    }
     
     ATRS = [ 
         ("3f65351002046c90..", None),
@@ -17,7 +20,7 @@ class Postcard_Card(ISO_7816_4_Card):
     def _get_binary(self, offset, length):
         command = C_APDU(self.APDU_READ_BINARY, p1 = offset >> 8, p2 = offset & 0xff, le = length)
         result = self.send_apdu(command)
-        assert result.sw == self.SW_OK
+        assert self.check_sw(result.sw)
         
         return result.data
     
@@ -93,6 +96,7 @@ class Postcard_Card(ISO_7816_4_Card):
         print "\t%20s '%s'" % ("", binascii.a2b_hex(value))
     
     def cmd_give_pin(self):
+        "Enter a pin"
         old = sys.modules["cards.generic_card"].DEBUG
         try:
             pin = getpass.getpass("Enter PIN: ")

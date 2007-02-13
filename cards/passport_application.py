@@ -6,6 +6,7 @@ from generic_card import Card
 import crypto_utils, tcos_card, TLV_utils
 from TLV_utils import identifier
 
+identifier("context_mrtd")
 identifier("context_EFcom")
 for _i in range(1,17):
     identifier("context_EFdg%i" % _i)
@@ -78,6 +79,7 @@ class Passport_Application(Application):
     DRIVER_NAME = "Passport"
     APDU_GET_RANDOM = C_APDU(CLA=0, INS=0x84, Le=0x08)
     APDU_MUTUAL_AUTHENTICATE = C_APDU(CLA=0, INS=0x82, Le=0x28)
+    DEFAULT_CONTEXT = context_mrtd
     
     AID_LIST = [
         "a0000002471001"
@@ -254,14 +256,14 @@ class Passport_Application(Application):
     }
     
     TLV_OBJECTS = {
-        None: {
+        context_mrtd: {
             0x60: (TLV_utils.recurse, "EF.COM - Common data elements", context_EFcom),
             0x77: (TLV_utils.recurse, "EF.SOD - Security Data", context_EFsod),
         }
     }
     
     for _key, (_a, _b) in DATA_GROUPS.items():
-        TLV_OBJECTS[None][_key] = (TLV_utils.recurse, "EF.DG%i - %s" % (_a, _b), globals()["context_EFdg%i" % _a])
+        TLV_OBJECTS[context_mrtd][_key] = (TLV_utils.recurse, "EF.DG%i - %s" % (_a, _b), globals()["context_EFdg%i" % _a])
     del _key, _a, _b
     
     def decode_version_number(value):

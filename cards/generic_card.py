@@ -39,6 +39,7 @@ class Card:
     }
     ## For the format of this dictionary of dictionaries see TLV_utils.tags
     TLV_OBJECTS = {}
+    DEFAULT_CONTEXT = None
     
     ## Format: "AID (binary)": ("name", [optional: description, {more information}])
     APPLICATIONS = {
@@ -159,7 +160,7 @@ class Card:
             end = (lastlen + (int(end,0) % lastlen) ) % lastlen
         else:
             end = lastlen
-        print TLV_utils.decode(self.last_result.data[start:end], tags=self.TLV_OBJECTS)
+        print TLV_utils.decode(self.last_result.data[start:end], tags=self.TLV_OBJECTS, context = self.DEFAULT_CONTEXT)
     
     _SHOW_APPLICATIONS_FORMAT_STRING = "%(aid)-50s %(name)-20s %(description)-30s"
     def cmd_show_applications(self):

@@ -3,7 +3,14 @@ import struct, sha, binascii
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
 from generic_card import Card
-import crypto_utils, tcos_card
+import crypto_utils, tcos_card, TLV_utils
+from TLV_utils import identifier
+
+identifier("context_EFcom")
+for _i in range(1,17):
+    identifier("context_EFdg%i" % _i)
+del _i
+identifier("context_EFsod")
 
 class Passport_Security_Environment(TCOS_Security_Environment):
     def __init__(self, card):
@@ -76,7 +83,7 @@ class Passport_Application(Application):
         "a0000002471001"
     ]
     STATUS_MAP = {
-        Card.PURPOSE_SM_OK: ("6282", "6982")
+        Card.PURPOSE_SM_OK: ("6282", "6982", "6A82")
     }
 
     
@@ -226,6 +233,60 @@ class Passport_Application(Application):
     COMMANDS = {
         "perform_bac": cmd_perform_bac,
     }
+    
+    DATA_GROUPS = {
+        0x61: (1, "Machine readable zone information"),
+        0x75: (2, "Encoded face"),
+        0x63: (3, "Encoded finger(s)"),
+        0x76: (4, "Encoded iris(s)"),
+        0x65: (5, "Displayed portrait"),
+        0x66: (6, "Reserved for future use"),
+        0x67: (7, "Displayed signature or usual mark"),
+        0x68: (8, "Data feature(s)"),
+        0x69: (9, "Structure feature(s)"),
+        0x6A: (10, "Substance feature(s)"),
+        0x6B: (11, "Additional personal data elements"),
+        0x6C: (12, "Additional document data elements"),
+        0x6D: (13, "Discretionary data elements"),
+        0x6E: (14, "Reserved for future use"),
+        0x6F: (15, "Active authentication public key info"),
+        0x70: (16, "Persons to notify data element(s)"),
+    }
+    
+    TLV_OBJECTS = {
+        None: {
+            0x60: (TLV_utils.recurse, "EF.COM - Common data elements", context_EFcom),
+            0x77: (TLV_utils.recurse, "EF.SOD - Security Data", context_EFsod),
+        }
+    }
+    
+    for _key, (_a, _b) in DATA_GROUPS.items():
+        TLV_OBJECTS[None][_key] = (TLV_utils.recurse, "EF.DG%i - %s" % (_a, _b), globals()["context_EFdg%i" % _a])
+    del _key, _a, _b
+    
+    def decode_version_number(value):
+        result = []
+        while len(value) > 0:
+            v, value = value[:2], value[2:]
+            result.append(str(int(v)))
+        return " "+".".join(result)
+    
+    def decode_tag_list(value):
+        result = []
+        for t in value:
+            e = Passport_Application.DATA_GROUPS.get(ord(t))
+            if e is None:
+                result.append("Error: '%02X' is an unknown Data Group tag" % ord(t))
+            else:
+                result.append("DG%-2i - %s" % e)
+        return "\n" + "\n".join(result)
+    
+    TLV_OBJECTS[context_EFcom] = {
+        0x5F01: (decode_version_number, "LDS version number"),
+        0x5F36: (decode_version_number, "Unicode version number"),
+        0x5C: (decode_tag_list, "List of all data groups present")
+    }
+    
 
 if __name__ == "__main__":
     mrz1 = "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<"

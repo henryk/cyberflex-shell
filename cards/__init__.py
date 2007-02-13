@@ -139,8 +139,11 @@ class Cardmultiplexer:
         
         self._classes = new_classes
         self._classes_needed = classes_needed
+        namespace = {}
+        for cls in classes_needed:
+            namespace.update( cls.__dict__ )
         self.__class__ = _classobj("Cardmultiplexer (merged)", 
-            tuple(classes_needed + [Cardmultiplexer]), {})
+            tuple(classes_needed + [Cardmultiplexer]), namespace)
         return (diffplus,diffminus)
     
     def _merge_attributes(self):

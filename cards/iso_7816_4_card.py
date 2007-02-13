@@ -43,9 +43,10 @@ class ISO_7816_4_Card(Card):
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
-    def open_file(self, fid):
+    def open_file(self, fid, p2 = None):
         "Open an EF under the current DF"
-        return self.select_file(0x02, self.SELECT_P2, fid)
+        if p2 is None: p2 = self.SELECT_P2
+        return self.select_file(0x02, p2, fid)
     
     def cmd_open(self, file):
         "Open a file"

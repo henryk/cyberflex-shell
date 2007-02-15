@@ -230,6 +230,12 @@ class Passport_Application(Application):
     
     def get_prompt(self):
         return "(%s)%s" % (self.DRIVER_NAME, self.se and "[SM]" or "")
+        
+    def check_sw(self, sw, purpose = None):
+        if purpose is not Card.PURPOSE_SM_OK:
+            return Card.check_sw(self, sw, purpose)
+        else:
+            return sw not in ("\x69\x87", "\x69\x88")
 
     def _read_ef(self, fid):
         result = self.open_file(fid, 0x0c)
@@ -305,6 +311,14 @@ class Passport_Application(Application):
         0x5F01: (decode_version_number, "LDS version number"),
         0x5F36: (decode_version_number, "Unicode version number"),
         0x5C: (decode_tag_list, "List of all data groups present")
+    }
+    
+    def decode_mrz(value):
+        l = len(value)/2
+        return "\n" + value[:l] + "\n" + value[l:]
+    
+    TLV_OBJECTS[context_EFdg1] = {
+        0x5F1F: (decode_mrz, "Machine Readable Zone data"),
     }
     
 

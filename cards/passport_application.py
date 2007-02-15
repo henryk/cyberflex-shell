@@ -79,6 +79,7 @@ class Passport_Application(Application):
     DRIVER_NAME = "Passport"
     APDU_GET_RANDOM = C_APDU(CLA=0, INS=0x84, Le=0x08)
     APDU_MUTUAL_AUTHENTICATE = C_APDU(CLA=0, INS=0x82, Le=0x28)
+    APDU_SELECT_FILE = C_APDU(INS=0xa4)
     DEFAULT_CONTEXT = context_mrtd
     
     AID_LIST = [

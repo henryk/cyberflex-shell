@@ -4,7 +4,7 @@ from generic_application import Application
 
 class ISO_7816_4_Card(Card):
     APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
-    APDU_SELECT_FILE = C_APDU(ins=0xa4)
+    APDU_SELECT_FILE = C_APDU(ins=0xa4, le=0)
     APDU_READ_BINARY = C_APDU(ins=0xb0,le=0)
     APDU_READ_RECORD = C_APDU(ins=0xb2,le=0)
     DRIVER_NAME = "ISO 7816-4"
@@ -20,7 +20,7 @@ class ISO_7816_4_Card(Card):
         result = self.send_apdu(
             C_APDU(self.APDU_SELECT_FILE,
             p1 = p1, p2 = p2,
-            data = fid, le = 0) )
+            data = fid) )
         return result
     
     def change_dir(self, fid = None):

@@ -26,7 +26,7 @@ class Application:
                 continue
             if possible_class.can_handle_aid(card, aid):
                 classes_to_load.append(possible_class)
-                print ".oO(Loading application '%s')" % possible_class.DRIVER_NAME
+                print ".oO(Loading application '%s')" % ", ".join(possible_class.DRIVER_NAME)
         
         card.add_classes(classes_to_load)
     load_applications = staticmethod(load_applications)

@@ -290,7 +290,7 @@ class Cyberflex_Shell(Shell):
             _obj = getattr(cards, i)
             if driver_name.lower() == i.lower():
                 return _obj
-            if hasattr(_obj, "DRIVER_NAME") and driver_name.lower() == getattr(_obj, "DRIVER_NAME").lower():
+            if hasattr(_obj, "DRIVER_NAME") and driver_name.lower() in [e.lower() for e in getattr(_obj, "DRIVER_NAME")]:
                 return _obj
         raise NameError, "Class not found"
     

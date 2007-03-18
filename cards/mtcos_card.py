@@ -3,7 +3,7 @@ from iso_7816_4_card import *
 import building_blocks
 
 class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
-    DRIVER_NAME = "MTCOS"
+    DRIVER_NAME = ["MTCOS"]
     
     ATRS = [
             # This is the correct ATR according to PC/SC v.2 part 3

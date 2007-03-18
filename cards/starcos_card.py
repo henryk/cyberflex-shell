@@ -2,7 +2,7 @@ import utils
 from iso_7816_4_card import *
 
 class Starcos_Card(ISO_7816_4_Card):
-    DRIVER_NAME = "Starcos"
+    DRIVER_NAME = ["Starcos"]
     APDU_READ_BINARY = C_APDU(ins=0xb0,le=0xfe)
     
     def change_dir(self, fid = None):

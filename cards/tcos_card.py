@@ -441,7 +441,7 @@ class TCOS_Security_Environment(object):
         self.keys[keyref] = keyvalue
 
 class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
-    DRIVER_NAME = "TCOS 2.0"
+    DRIVER_NAME = ["TCOS 2.0"]
     APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
     SELECT_P2 = 0x04
     
@@ -681,7 +681,7 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         }
     
 class TCOS_3_Card(TCOS_Card):
-    DRIVER_NAME = "TCOS 3.0"
+    DRIVER_NAME = ["TCOS 3.0"]
     APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
     SELECT_P2 = 0x04
     LS_L_SIZE_TAG = 0x80

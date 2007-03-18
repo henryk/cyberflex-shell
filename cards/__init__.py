@@ -57,7 +57,7 @@ class Cardmultiplexer:
     
     MERGE_DICTS = ("APPLICATIONS", "COMMANDS", "STATUS_WORDS", "VENDORS")
     MERGE_DICTS_RECURSIVE = ("TLV_OBJECTS",  "STATUS_MAP")
-    MERGE_LISTS = ()
+    MERGE_LISTS = ("DRIVER_NAME", )
     
     def __init__(self, classes, *args, **kwargs):
         """Creates a new Cardmultiplexer object. 

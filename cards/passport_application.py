@@ -76,7 +76,7 @@ class Passport_Security_Environment(TCOS_Security_Environment):
         return Passport_Application._mac(self.card.KSmac, data, self.card.ssc, dopad=False)
 
 class Passport_Application(Application):
-    DRIVER_NAME = "Passport"
+    DRIVER_NAME = ["Passport"]
     APDU_GET_RANDOM = C_APDU(CLA=0, INS=0x84, Le=0x08)
     APDU_MUTUAL_AUTHENTICATE = C_APDU(CLA=0, INS=0x82, Le=0x28)
     APDU_SELECT_FILE = C_APDU(INS=0xa4)
@@ -230,7 +230,7 @@ class Passport_Application(Application):
     _make_random = staticmethod(_make_random)
     
     def get_prompt(self):
-        return "(%s)%s" % (self.DRIVER_NAME, self.se and "[SM]" or "")
+        return "(%s)%s" % (self.get_driver_name(), self.se and "[SM]" or "")
         
     def check_sw(self, sw, purpose = None):
         if purpose is not Card.PURPOSE_SM_OK:

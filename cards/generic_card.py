@@ -9,8 +9,9 @@ PURPOSE_SUCCESS = 1 # Command executed successful
 PURPOSE_RETRY = 2   # Command executed successful but needs retry with correct length
 PURPOSE_SM_OK = 3   # Command not executed successful or with warnings, but response still contains SM objects
 
+_GENERIC_NAME = "Generic"
 class Card:
-    DRIVER_NAME = "Generic"
+    DRIVER_NAME = [_GENERIC_NAME]
     APDU_GET_RESPONSE = C_APDU(ins=0xc0)
     APDU_VERIFY_PIN = C_APDU(ins=0x20)
     PURPOSE_SUCCESS, PURPOSE_RETRY, PURPOSE_SM_OK = PURPOSE_SUCCESS, PURPOSE_RETRY, PURPOSE_SM_OK
@@ -248,7 +249,7 @@ class Card:
     can_handle = classmethod(can_handle)
     
     def get_prompt(self):
-        return "(%s)" % self.DRIVER_NAME
+        return "(%s)" % self.get_driver_name()
     
     def match_statusword(swlist, sw):
         """Try to find sw in swlist. 
@@ -289,6 +290,13 @@ class Card:
     
     def get_protocol(self):
         return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]
+    
+    def get_driver_name(self):
+        if len(self.DRIVER_NAME) > 1:
+            names = [e for e in self.DRIVER_NAME if e != _GENERIC_NAME]
+        else:
+            names = self.DRIVER_NAME
+        return ", ".join(names)
     
     def close_card(self):
         "Disconnect from a card"

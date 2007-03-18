@@ -3,7 +3,7 @@ from iso_7816_4_card import *
 import building_blocks
 
 class CardOS_Card(ISO_7816_4_Card,building_blocks.Card_with_ls):
-    DRIVER_NAME = "CardOS"
+    DRIVER_NAME = ["CardOS"]
     
     ATRS = [
             ("3bf2180002c10a31fe58c80874", None),

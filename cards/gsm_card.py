@@ -2,7 +2,7 @@ import utils
 from generic_card import *
 
 class GSM_Card(Card):
-    DRIVER_NAME = "GSM"
+    DRIVER_NAME = ["GSM"]
     APDU_GET_RESPONSE = C_APDU("\xa0\xC0\x00\x00")
     STATUS_MAP = {
         PURPOSE_RETRY: ("9F??", )

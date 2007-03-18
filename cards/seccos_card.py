@@ -2,7 +2,7 @@ import utils
 from iso_7816_4_card import *
 
 class SECCOS_Card(ISO_7816_4_Card):
-    DRIVER_NAME = "SECCOS"
+    DRIVER_NAME = ["SECCOS"]
     SELECT_P2 = 0x04
     
     ATRS = [

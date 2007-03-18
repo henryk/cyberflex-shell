@@ -20,7 +20,7 @@ class Cyberflex_Card(Java_Card):
     APDU_EXTERNAL_AUTHENTICATE = C_APDU('\x84\x82\x00\x00')
     APDU_GET_STATUS = C_APDU('\x84\xF2\x00\x00\x02\x4f\x00')
     APDU_DELETE = C_APDU('\x84\xe4\x00\x00')
-    DRIVER_NAME = "Cyberflex"
+    DRIVER_NAME = ["Cyberflex"]
     
     ATRS = [ 
         ## Cyberflex Access 32k v2 ???
@@ -293,7 +293,7 @@ class Cyberflex_Card(Java_Card):
         SECURE_CHANNEL_MAC: " [MAC]",
         SECURE_CHANNEL_MACENC: " [MAC+enc]"}
     def get_prompt(self):
-        return "(%s)%s" % (self.DRIVER_NAME, 
+        return "(%s)%s" % (self.get_driver_name(), 
             Cyberflex_Card._secname[self.secure_channel_state])
     
     

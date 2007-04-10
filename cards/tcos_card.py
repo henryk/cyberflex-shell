@@ -308,7 +308,7 @@ class TCOS_Security_Environment(object):
         if len(block) > 0:
             do_block(buffer, block)
         
-        cct = self._mac("".join(buffer))
+        cct = self._mac(config, "".join(buffer))
         
         if print_buffer:
             print "| Result (Tag 0x8e, length: 0x%02x):" % len(cct)
@@ -316,7 +316,7 @@ class TCOS_Security_Environment(object):
         
         return cct
     
-    def _mac(self, data):
+    def _mac(self, config, data):
         return crypto_utils.cipher( True, 
             self.get_cipherspec(config),
             self.get_key(config),

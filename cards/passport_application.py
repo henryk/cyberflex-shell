@@ -69,7 +69,7 @@ class Passport_Security_Environment(TCOS_Security_Environment):
         return TCOS_Security_Environment.after_send(self, result)
 
     
-    def _mac(self, data):
+    def _mac(self, config, data):
         (ssc,) = struct.unpack(">Q", self.card.ssc)
         ssc = ssc + 1
         self.card.ssc = struct.pack(">Q", ssc)

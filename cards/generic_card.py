@@ -52,7 +52,7 @@ class Card:
         "\xD2\x76\x00\x00\x66\x01":             ("DF_SIG",            "Signature application", {"fid": "\xAB\x00"}),
         "\xD2\x76\x00\x00\x25\x5A\x41\x02\x00": ("ZA_MF_NEU",         "Zusatzanwendungen",     {"fid": "\xA7\x00"}),
         "\xD2\x76\x00\x00\x25\x45\x43\x02\x00": ("DF_EC_CASH_NEU",    "ec-Cash",               {"fid": "\xA1\x00"}),
-        "\xD2\x76\x00\x00\x25\x45\x50\x02\x00": ("DF_BOERSE_NEU",     "Geldkarte",             {"fid": "\xA2\x00"}),
+        "\xD2\x76\x00\x00\x25\x45\x50\x02\x00": ("DF_BOERSE_NEU",     "Geldkarte",             {"fid": "\xA2\x00", "alias": ("geldkarte",)}),
         "\xD2\x76\x00\x00\x25\x47\x41\x01\x00": ("DF_GA_MAESTRO",     "GA-Maestro",            {"fid": "\xAC\x00"}),
         "\xD2\x76\x00\x00\x25\x54\x44\x01\x00": ("DF_TAN",            "TAN-Anwendung",         {"fid": "\xAC\x02"}),
         "\xD2\x76\x00\x00\x25\x4D\x01\x02\x00": ("DF_MARKTPLATZ_NEU", "Marktplatz",            {"fid": "\xB0\x01"}),

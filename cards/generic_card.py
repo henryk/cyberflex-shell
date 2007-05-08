@@ -1,4 +1,14 @@
-import TLV_utils, crypto_utils, utils, pycsc, binascii, fnmatch, sre
+try:
+    import pycsc
+except ImportError,e:
+    try:
+        import PyCSC
+        from PyCSC import pycsc # Windows
+        pycsc.SCARD_PROTOCOL_ANY = PyCSC.SCARD_PROTOCOL_ANY
+    except ImportError:
+        raise e # raise the original exception, masking the windows-only attempt
+
+import TLV_utils, crypto_utils, utils, binascii, fnmatch, sre
 from utils import C_APDU, R_APDU
 
 DEBUG = True

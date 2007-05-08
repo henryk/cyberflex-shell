@@ -1,4 +1,14 @@
-import pycsc, string, binascii, sys, re
+try:
+    import pycsc
+except ImportError,e:
+    try:
+        import PyCSC
+        from PyCSC import pycsc # Windows
+        pycsc.SCARD_PROTOCOL_ANY = PyCSC.SCARD_PROTOCOL_ANY
+    except ImportError:
+        raise e # raise the original exception, masking the windows-only attempt
+
+import string, binascii, sys, re
 
 def represent_binary_fancy(len, value, mask = 0):
     result = []

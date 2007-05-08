@@ -23,7 +23,7 @@ class Shell:
         own commands first."""
         
         if sys.modules.has_key("readline"):
-            histfile = os.path.join(os.environ["HOME"], ".%s.history" % basename)
+            histfile = os.path.join(self.find_homedir(), ".%s.history" % basename)
             try:
                 readline.read_history_file(histfile)
             except IOError:
@@ -50,6 +50,18 @@ class Shell:
         self.pre_hook = []
         self.post_hook = []
         self.prompt = ""
+
+    def find_homedir(self):
+        "Returns the home directory of the current user or (in Windows) a directory for application specific data."
+        if os.environ.has_key("HOME"): return os.environ["HOME"]
+        elif os.environ.has_key("APPDATA"):
+            appdata = os.environ["APPDATA"]
+            dirname = os.path.join(appdata, self.basename)
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
+            return dirname
+        else:
+            raise EnvironmentError, "Can't find a home directory from the environment."
     
     def get_prompt(self):
         return self.prompt
@@ -81,7 +93,7 @@ class Shell:
         lines = []
         self.startup_ran = True
         try:
-            fp = file(os.path.join(os.environ["HOME"], ".%src" % self.basename))
+            fp = file(os.path.join(self.find_homedir(), ".%src" % self.basename))
             lines = fp.readlines()
             fp.close()
         except IOError:

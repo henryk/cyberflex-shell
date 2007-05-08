@@ -1,5 +1,5 @@
 from generic_application import Application
-import struct, sha, binascii
+import struct, sha, binascii, os
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
 from generic_card import Card
@@ -220,13 +220,8 @@ class Passport_Application(Application):
     _mac = staticmethod(_mac)
     
     def _make_random(len):
-        "Get len random bytes from /dev/urandom"
-        urand = file("/dev/urandom","r")
-        try:
-            r = urand.read(len)
-        finally:
-            urand.close()
-        return r
+        "Get len random bytes"
+        return os.urandom(len)
     _make_random = staticmethod(_make_random)
     
     def get_prompt(self):

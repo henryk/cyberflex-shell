@@ -170,7 +170,13 @@ def fingerprint(card):
     
     result = []
     
-    catr = compress_atr(card.get_atr())
+    atr = card.get_atr()
+    try:
+        catr = compress_atr(atr)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except: # Any error in the ATR processing
+        catr = "F:%s" % binascii.b2a_hex(atr)
     result.append( catr )
     result.extend( fingerprint_7816(card) )
     

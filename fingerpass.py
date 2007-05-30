@@ -160,7 +160,7 @@ def fingerprint(card):
                     if standard_and_name[3:] == "\x00" * (len(standard_and_name)-3):
                         return "1:%s" % binascii.b2a_hex(standard_and_name[:3]) # RFU bytes unset
                     else:
-                        return "2:%s" % binascii.b2a_hex(standard_and_name[:3]) # RFU bytes set
+                        return "2:%s" % binascii.b2a_hex(standard_and_name) # RFU bytes set
             
             return "0:%s" % binascii.b2a_hex(atr[4:])
         else:

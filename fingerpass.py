@@ -171,7 +171,6 @@ def fingerprint(card):
     result = []
     
     catr = compress_atr(card.get_atr())
-    print catr
     result.append( catr )
     result.extend( fingerprint_7816(card) )
     
@@ -194,7 +193,7 @@ if __name__ == "__main__":
 
     pycsc_card = connect(reader)
     card = cards.new_card_object(pycsc_card)
-    #cards.generic_card.DEBUG = False
+    cards.generic_card.DEBUG = False
     
     print >>sys.stderr, "Using %s" % card.DRIVER_NAME
 

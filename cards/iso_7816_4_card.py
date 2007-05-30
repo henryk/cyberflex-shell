@@ -120,26 +120,33 @@ class ISO_7816_4_Card(Card):
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
-    def select_application(self, aid):
+    def select_application(self, aid, le=0):
         result = self.send_apdu(
             C_APDU(self.APDU_SELECT_APPLICATION,
-            data = aid, le = 0) ) ## FIXME With or without le
+            data = aid, le = le) ) ## FIXME With or without le
         if self.check_sw(result.sw):
             Application.load_applications(self, aid)
         return result
+    
+    def resolve_symbolic_aid(self, symbolic_name):
+        "Returns symbolic_name, or if symbolic_name is a known symbolic_name then its corresponding aid."
+        s = [a for a,b in self.APPLICATIONS.items()
+                if (b[0] is not None and b[0].lower() == symbolic_name.lower())
+                or (len(b) > 2 and symbolic_name.lower() in [c.lower() for c in b[2].get("alias", [])])
+            ]
+        if len(s) > 0:
+            aid = s[0]
+        else:
+            aid = binascii.a2b_hex("".join(symbolic_name.split()))
+        
+        return aid
     
     def cmd_selectapplication(self, application):
         """Select an application on the card. 
         application can be given either as hexadecimal aid or by symbolic name (if known)."""
         
-        s = [a for a,b in self.APPLICATIONS.items()
-                if (b[0] is not None and b[0].lower() == application.lower())
-                or (len(b) > 2 and application.lower() in [c.lower() for c in b[2].get("alias", [])])
-            ]
-        if len(s) > 0:
-            aid = s[0]
-        else:
-            aid = binascii.a2b_hex("".join(application.split()))
+        aid = self.resolve_symbolic_aid(application)
+        
         result = self.select_application(aid)
         if len(result.data) > 0:
             print utils.hexdump(result.data)
@@ -148,6 +155,11 @@ class ISO_7816_4_Card(Card):
     ATRS = list(Card.ATRS)
     ATRS.extend( [
             (".*", None),   ## For now we accept any card
+        ] )
+    
+    STOP_ATRS = list(Card.STOP_ATRS)
+    STOP_ATRS.extend( [
+            ("3b8f8001804f0ca000000306......00000000..", None) # Contactless storage cards (PC/SC spec part 3 section 3.1.3.2.3
         ] )
     
     COMMANDS = dict(Card.COMMANDS)

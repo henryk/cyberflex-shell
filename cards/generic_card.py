@@ -35,6 +35,9 @@ class Card:
     ##   string and mask a binary mask. Alternatively mask may be None, then ATR must be a regex
     ##   to match on the ATRs hexlify representation
     ATRS = []
+    ## Note: A list of _not_ supported ATRs, overriding any possible match in ATRS. Matching
+    ##   is done as for ATRS.
+    STOP_ATRS = []
     ## Note: a key in this dictionary may either be a two-byte string containing
     ## a binary status word, or a four-byte string containing a hexadecimal
     ## status word, possibly with ? characters marking variable nibbles. 
@@ -243,19 +246,28 @@ class Card:
         if purpose is None: purpose = Card.PURPOSE_SUCCESS
         return self.match_statusword(self.STATUS_MAP[purpose], sw)
     
+    def get_atr(self):
+        return self.card.status().get("ATR","")
+    
     def can_handle(cls, card):
         """Determine whether this class can handle a given pycsc object."""
         ATR = card.status().get("ATR","")
-        for (knownatr, mask) in cls.ATRS:
-            if mask is None:
-                if sre.match(knownatr, binascii.hexlify(ATR), sre.I):
-                    return True
-            else:
-                if len(knownatr) != len(ATR):
-                    continue
-                if crypto_utils.andstring(knownatr, mask) == crypto_utils.andstring(ATR, mask):
-                    return True
+        def match_list(atr, list):
+            for (knownatr, mask) in list:
+                if mask is None:
+                    if sre.match(knownatr, binascii.hexlify(atr), sre.I):
+                        return True
+                else:
+                    if len(knownatr) != len(atr):
+                        continue
+                    if crypto_utils.andstring(knownatr, mask) == crypto_utils.andstring(atr, mask):
+                        return True
+            return False
+        
+        if not match_list(ATR, cls.STOP_ATRS) and match_list(ATR, cls.ATRS):
+            return True
         return False
+        
     can_handle = classmethod(can_handle)
     
     def get_prompt(self):

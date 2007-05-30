@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2007-02-11, 06:20:08 -->
+<!-- Saved: 2007-05-30, 17:22:46 -->
 <!-- Copyright (C) 2007 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -94,6 +94,9 @@
     <Source>
       <Dir>cards</Dir>
       <Name>generic_application.py</Name>
+    </Source>
+    <Source>
+      <Name>fingerpass.py</Name>
     </Source>
   </Sources>
   <Forms>

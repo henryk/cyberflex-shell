@@ -113,22 +113,28 @@ def fingerprint_7816(card):
                 result.append( SHORT_SW_MAP[None] )
                 exceptional.append(response.sw)
         
+        UNIT_FORMAT = "%X"
+        UNIT_LEN = 4 # For hex in "%X" format. Would be 8 for hex in "%02X" format.
         compressed = []
         current = 0
         count = 0
         for r in result:
-            if count >= 8:
+            if count >= UNIT_LEN:
                 compressed.append( current )
                 current = count = 0
             current = (current << SHORT_SW_WIDTH) | r
             count = count + SHORT_SW_WIDTH
         
         if count > 0:
+            if not count >= UNIT_LEN:
+                while count < UNIT_LEN:
+                    current = current << SHORT_SW_WIDTH
+                    count += SHORT_SW_WIDTH
             compressed.append( current )
             current = count = 0
 
         
-        return "".join( ["%02X" % r for r in compressed] ) + ":".join( (len(exceptional) > 0 and [""] or []) + [binascii.b2a_hex(e) for e in exceptional] )
+        return "".join( [UNIT_FORMAT % r for r in compressed] ) + ":".join( (len(exceptional) > 0 and [""] or []) + [binascii.b2a_hex(e) for e in exceptional] )
     
     result = []
     test_icao = card.select_application(card.resolve_symbolic_aid("mrtd"), le=None)

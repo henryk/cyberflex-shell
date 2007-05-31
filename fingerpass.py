@@ -132,7 +132,7 @@ def fingerprint_7816(card):
                     count += SHORT_SW_WIDTH
             compressed.append( current )
             current = count = 0
-
+        
         
         return "".join( [UNIT_FORMAT % r for r in compressed] ) + ":".join( (len(exceptional) > 0 and [""] or []) + [binascii.b2a_hex(e) for e in exceptional] )
     
@@ -188,6 +188,38 @@ def fingerprint(card):
     
     return ",".join(result)
     
+def match_fingerprint(fingerprint, database="fingerprints.txt"):
+    fp = file(database, "r")
+    
+    results = []
+    current_result = []
+    first_line = True
+    matched = False
+    
+    def do_match(line, fingerprint):
+        return line.strip() == fingerprint.strip()
+    
+    for line in fp.readlines():
+        if line.strip() == "":
+            matched = False
+            if len(current_result) > 0:
+                results.append(current_result)
+                current_result = []
+        elif not line[0].isspace():
+            if do_match(line, fingerprint):
+                matched = True
+            else:
+                matched = False
+        elif matched:
+            current_result.append(line.strip())
+    
+    if len(current_result) > 0:
+        results.append(current_result)
+        current_result = []
+    
+    fp.close()
+    return ["\n".join(e) for e in results]
+    
 if __name__ == "__main__":
 
     (options, arguments) = getopt.gnu_getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
@@ -211,4 +243,12 @@ if __name__ == "__main__":
 
     fp = fingerprint(card)
     print "Fingerprint: %s" % fp
+    matches = match_fingerprint(fp)
+    if len(matches) > 1:
+        print "Matched as: \n\t+ %s" % "\nor\t+ ".join( ["\n\t  ".join(e.split("\n")) for e in matches] )
+    elif len(matches) == 1:
+        if len(matches[0].split("\n")) == 1:
+            print "Matched as: %s" % matches[0]
+        else:
+            print "Matched as: \n\t%s" % "\n\t".join( matches[0].split("\n") )
     

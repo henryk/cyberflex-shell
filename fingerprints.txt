@@ -1,0 +1,11 @@
+1:0b0014
+    ICode
+
+0:8080,N
+    DESfire
+
+1:030003
+    Mifare Ultralight
+
+1:030001
+    Mifare Classic 1k

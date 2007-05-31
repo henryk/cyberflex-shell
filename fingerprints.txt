@@ -16,3 +16,6 @@
 
 0:00640411010131800090005a,P,.*
     German Passport
+
+0:006404150102009000ee,P:6700,1,569AAA9A
+    Electronic Passport Specimen, issued by Bundesdruckerei, Germany

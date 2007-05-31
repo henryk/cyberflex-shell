@@ -137,11 +137,16 @@ def fingerprint_7816(card):
         return "".join( [UNIT_FORMAT % r for r in compressed] ) + ":".join( (len(exceptional) > 0 and [""] or []) + [binascii.b2a_hex(e) for e in exceptional] )
     
     result = []
+    postfix = ""
     test_icao = card.select_application(card.resolve_symbolic_aid("mrtd"), le=None)
+    if test_icao.sw == "\x67\x00":
+        postfix = ":6700" # SELECT APPLICATION with P2=0 and without Le returns 6700 Wrong Length
+        test_icao = card.select_application(card.resolve_symbolic_aid("mrtd"), le=None, P2=0x0c)
+    
     if not card.check_sw(test_icao.sw, card.PURPOSE_SUCCESS):
-        result.append("N") # Not an ICAO MRTD
+        result.append("N"+postfix) # Not an ICAO MRTD
     else:
-        result.append("P") # An ICAO MRTD
+        result.append("P"+postfix) # An ICAO MRTD
         
         bac = detect_bac(card)
         result.append(bac) # BAC status

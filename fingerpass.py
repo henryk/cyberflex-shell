@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import pycsc, utils, cards, TLV_utils, sys, binascii, time, getopt, traceback
+import pycsc, utils, cards, TLV_utils, sys, binascii, time, getopt, traceback, re
 
 STATUS_INTERVAL = 10
 
@@ -197,7 +197,7 @@ def match_fingerprint(fingerprint, database="fingerprints.txt"):
     matched = False
     
     def do_match(line, fingerprint):
-        return line.strip() == fingerprint.strip()
+        return re.match(line.strip()+"$", fingerprint.strip()) is not None
     
     for line in fp.readlines():
         if line.strip() == "":

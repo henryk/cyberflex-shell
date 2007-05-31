@@ -9,3 +9,7 @@
 
 1:030001
     Mifare Classic 1k
+
+0:80919131f06477e30300838290001c,P,.*
+    Belgian Passport
+    (imported from Ludovic Rousseau)

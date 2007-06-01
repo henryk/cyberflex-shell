@@ -1,5 +1,6 @@
 import utils, TLV_utils
 from iso_7816_4_card import *
+from rfid_card import RFID_Card
 import building_blocks
 
 class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
@@ -11,6 +12,11 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
             # This is what SCM SCR331/SDI010 shows
             ("3BFE9100FF918171FE40004120001177B1024D54434F537301CF", None),
         ]
+    
+    STOP_ATRS = [
+            # Don't use this class for the contactless interface, but instead MTCOS_Card_RFID below
+            ("3b8980014d54434f53730102013f", None),
+    ]
     
     COMMANDS = {
         "list_dirs": building_blocks.Card_with_80_aa.cmd_listdirs,
@@ -56,6 +62,8 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         (0x8E, 0x0C, None, "3DES-Key (Triple DES with 2 or 3 keys)"),
         (0x81, 0x00, None, " - ECB"),
         (0x81, 0x01, None, " - CBC"),
+    )
+    cryptographic_algorithm_byte_descriptions_old = (
         (0x80, 0x80, None, "Asymmetric Algorithm"),
         (0xC0, 0x80, None, "Private Key"),
         (0xB0, 0x80, None, "RSA"),
@@ -63,6 +71,11 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         (0xB2, 0x82, None, " - PKCS#1 type 2 and 2"),
         (0xB4, 0x84, None, " - ISO/IEC 9796-2"),
     )
+    cryptographic_algorithm_byte_descriptions_new = (
+        (0x80, 0x00, None, "Last Byte"),
+        (0x80, 0x80, None, "At least one byte following"),
+    )
+    ## FIXME: This is broken, the MTCOS guys changed their bitflags, no way to distinguish old from new
     def decode_83(value):
         ## 0x83 in 0xA5 is either "Cryptographic algorithm and allowed applications" or
         ##  "Default key reference for authentication commands in this environment"
@@ -199,3 +212,14 @@ class MTCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
 
+class MTCOS_Card_RFID(MTCOS_Card,RFID_Card):
+    DRIVER_NAME = ["MTCOS RFID"]
+    ATRS = [
+            ("3b8980014d54434f53730102013f", None),
+    ]
+    
+    STOP_ATRS = []
+    
+    COMMANDS = {}
+    COMMANDS.update(MTCOS_Card.COMMANDS)
+    COMMANDS.update(RFID_Card.COMMANDS)

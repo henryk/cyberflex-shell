@@ -67,6 +67,7 @@ class Cyberflex_Shell(Shell):
         fh = file(filename)
         
         doit = not ask
+        #ignored_SWs = ["\x62\x82"]
         ignored_SWs = []
         
         for line in fh:
@@ -259,6 +260,12 @@ class Cyberflex_Shell(Shell):
         self.logger = Logger(filename, sys.stdout)
         sys.stdout = self.logger
         print "Logging to %s" % filename
+        try:
+            self.logger.println( "ATR of currently inserted card is: %s" % utils.hexdump(self.card.get_atr(), short=True) )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            pass
         self.register_pre_hook(self.pause_log)
     
     def stop_log(self):

@@ -120,10 +120,10 @@ class ISO_7816_4_Card(Card):
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
-    def select_application(self, aid, le=0):
+    def select_application(self, aid, le=0, **kwargs):
         result = self.send_apdu(
             C_APDU(self.APDU_SELECT_APPLICATION,
-            data = aid, le = le) ) ## FIXME With or without le
+            data = aid, le = le, **kwargs) ) ## FIXME With or without le
         if self.check_sw(result.sw):
             Application.load_applications(self, aid)
         return result

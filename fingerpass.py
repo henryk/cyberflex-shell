@@ -63,6 +63,16 @@ def connect(reader = None):
     print "ATR:          %s" % utils.hexdump(newState[0]['Atr'], short = True)
     return pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
 
+def fingerprint_rfid(card):
+    # Need RFID
+    if not isinstance(card, cards.rfid_card.RFID_Card):
+        return [""]
+    
+    uid = card.get_uid()
+    
+    return "%02X" % ord(uid[0])
+    # FIXME: Determine ISO type and then return a value depending on A-fixed UID vs. A-random UID vs. B
+
 def fingerprint_7816(card):
     # Need ISO 7816-4
     if not isinstance(card, cards.iso_7816_4_card.ISO_7816_4_Card):
@@ -190,6 +200,7 @@ def fingerprint(card):
         catr = "F:%s" % binascii.b2a_hex(atr)
     result.append( catr )
     result.extend( fingerprint_7816(card) )
+    result.append( fingerprint_rfid(card) )
     
     return ",".join(result)
     
@@ -202,9 +213,12 @@ def match_fingerprint(fingerprint, database="fingerprints.txt"):
     matched = False
     
     def do_match(line, fingerprint):
-        return re.match(line.strip()+"$", fingerprint.strip()) is not None
+        return re.match(line.strip(), fingerprint.strip()) is not None
     
     for line in fp.readlines():
+        if line[0] == "#":
+            continue
+        
         if line.strip() == "":
             matched = False
             if len(current_result) > 0:
@@ -245,7 +259,9 @@ if __name__ == "__main__":
     cards.generic_card.DEBUG = False
     
     print >>sys.stderr, "Using %s" % card.DRIVER_NAME
-
+    
+    if isinstance(card, cards.rfid_card.RFID_Card):
+        print "UID: %s" % utils.hexdump(card.get_uid(), short=True)
     fp = fingerprint(card)
     print "Fingerprint: %s" % fp
     matches = match_fingerprint(fp)

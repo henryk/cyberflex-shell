@@ -1,21 +1,26 @@
-1:0b0014
+1:0b0014$
     ICode
 
-0:8080,N
+0:8080,N$
     DESfire
 
-1:030003
+1:030003$
     Mifare Ultralight
 
-1:030001
+1:030001$
     Mifare Classic 1k
 
-0:80919131f06477e30300838290001c,P,.*
+0:80919131f06477e30300838290001c,P[^,]*,
     Belgian Passport
     (imported from Ludovic Rousseau)
 
-0:00640411010131800090005a,P,.*
-    German Passport
-
 0:006404150102009000ee,P:6700,1,569AAA9A
     Electronic Passport Specimen, issued by Bundesdruckerei, Germany
+
+0:[^,]*,P:6700,1,5AAAAAAA,08
+    German Passport
+# Observed ATRS:
+# Passport issued Nov 06: 3b 8b 80 01 00 64 04 11 01 01 31 80 00 90 00 5a
+#  corresponding fingerprint: 0:00640411010131800090005a,P:6700,1,5AAAAAAA,08
+# Passport issued Apr 07: 3b 89 80 01 00 64 04 15 01 02 00 90 00 ee
+#  corresponding fingerprint: 0:006404150102009000ee,P:6700,1,5AAAAAAA,08

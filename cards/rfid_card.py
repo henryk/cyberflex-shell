@@ -23,6 +23,7 @@ class RFID_Card(Card):
         return result.data
     
     def cmd_get_uid(self):
+        "Get the UID or SNR or PUPI of the currently connected card."
         uid = self.get_uid()
         print utils.hexdump(uid, short=True)
     
@@ -32,6 +33,7 @@ class RFID_Card(Card):
     
     STATUS_WORDS = dict(Card.STATUS_WORDS)
     STATUS_WORDS.update( {
+        "\x62\x82": "End of file (or UID) reached before Le bytes",
         "\x67\x00": "Wrong Length",
         "\x68\x00": "Class byte is not correct",
         "\x6a\x81": "Function not supported",
@@ -54,11 +56,19 @@ class Mifare_Card(RFID_Storage_Card):
     DATA_UNIT_SIZE=4
 
 class Mifare_Classic_Card(Mifare_Card):
-    DRIVER_NAME = ["Mifare Classic"]
+    pass
+
+class Mifare_Classic_1k_Card(Mifare_Classic_Card):
+    DRIVER_NAME = ["Mifare Classic 1k"]
     
     ATRS = [
         # Classic 1k
         ("3b8f8001804f0ca000000306..000100000000..", None),
+    ]
+class Mifare_Classic_4k_Card(Mifare_Classic_Card):
+    DRIVER_NAME = ["Mifare Classic 4k"]
+    
+    ATRS = [
         # Classic 4k
         ("3b8f8001804f0ca000000306..000200000000..", None),
     ]

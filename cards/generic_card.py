@@ -16,20 +16,23 @@ DEBUG = True
 
 ## Constants for check_sw()
 PURPOSE_SUCCESS = 1 # Command executed successful
-PURPOSE_RETRY = 2   # Command executed successful but needs retry with correct length
+PURPOSE_GET_RESPONSE = 2   # Command executed successful but needs GET RESPONSE with correct length
 PURPOSE_SM_OK = 3   # Command not executed successful or with warnings, but response still contains SM objects
+PURPOSE_RETRY = 4   # Command would be executed successful but needs retry with correct length
 
 _GENERIC_NAME = "Generic"
 class Card:
     DRIVER_NAME = [_GENERIC_NAME]
     APDU_GET_RESPONSE = C_APDU(ins=0xc0)
     APDU_VERIFY_PIN = C_APDU(ins=0x20)
-    PURPOSE_SUCCESS, PURPOSE_RETRY, PURPOSE_SM_OK = PURPOSE_SUCCESS, PURPOSE_RETRY, PURPOSE_SM_OK
+    PURPOSE_SUCCESS, PURPOSE_GET_RESPONSE, PURPOSE_SM_OK, PURPOSE_RETRY = PURPOSE_SUCCESS, PURPOSE_GET_RESPONSE, PURPOSE_SM_OK, PURPOSE_RETRY
     ## Map for check_sw()
     STATUS_MAP = {
         PURPOSE_SUCCESS: ("\x90\x00", ),
-        PURPOSE_RETRY: ("61??", ), ## If this is received then GET RESPONSE should be called with SW2
-        PURPOSE_SM_OK: ("\x90\x00",)
+        PURPOSE_GET_RESPONSE: ("61??", ), ## If this is received then GET RESPONSE should be called with SW2
+        PURPOSE_SM_OK: ("\x90\x00",),
+        PURPOSE_RETRY: (), ## Theoretically this would contain "6C??", but I dare not automatically resending a command for _all_ card types
+        ## Instead, card types for which this is safe should set it in their own STATUS_MAP
     }
     ## Note: an item in this list must be a tuple of (atr, mask) where atr is a binary
     ##   string and mask a binary mask. Alternatively mask may be None, then ATR must be a regex
@@ -86,6 +89,7 @@ class Card:
         "\xD2\x76\x00\x00\x05": ("Giesecke & Devrient", ),
         "\xD2\x76\x00\x00\x40": ("Zentralinstitut fuer die Kassenaerztliche Versorgung in der Bundesrepublik Deutschland", ), # hpc-use-cases-01.pdf
         "\xa0\x00\x00\x02\x47": ("ICAO", ),
+        "\xa0\x00\x00\x03\x06": ("PC/SC Workgroup", ),
     }
     
     def _decode_df_name(self, value):
@@ -216,9 +220,13 @@ class Card:
     def _send_with_retry(self, apdu):
         result = self._real_send(apdu)
         
-        if self.check_sw(result.sw, PURPOSE_RETRY):
+        if self.check_sw(result.sw, PURPOSE_GET_RESPONSE):
             ## Need to call GetResponse
             gr_apdu = C_APDU(self.APDU_GET_RESPONSE, le = result.sw2) # FIXME
+            result = R_APDU(self._real_send(gr_apdu))
+        elif self.check_sw(result.sw, PURPOSE_RETRY) and apdu.Le == 0:
+            ## Retry with correct Le
+            gr_apdu = C_APDU(apdu, le = result.sw2)
             result = R_APDU(self._real_send(gr_apdu))
         
         return result

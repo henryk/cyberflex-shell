@@ -1,5 +1,6 @@
 import utils
 from generic_card import *
+import building_blocks
 
 class RFID_Card(Card):
     DRIVER_NAME = ["RFID"]
@@ -28,13 +29,29 @@ class RFID_Card(Card):
     COMMANDS = {
         "get_uid": cmd_get_uid,
     }
+    
+    STATUS_WORDS = dict(Card.STATUS_WORDS)
+    STATUS_WORDS.update( {
+        "\x67\x00": "Wrong Length",
+        "\x68\x00": "Class byte is not correct",
+        "\x6a\x81": "Function not supported",
+        "\x6b\x00": "Wrong parameters P1-P2",
+    } )
 
-class RFID_Storage_Card(RFID_Card):
+class RFID_Storage_Card(building_blocks.Card_with_read_binary,RFID_Card):
     STOP_ATRS = []
     ATRS = []
+    STATUS_MAP = dict(RFID_Card.STATUS_MAP)
+    STATUS_MAP.update( {
+        Card.PURPOSE_RETRY: ("6C??", ),
+    } )
+    
+    APDU_READ_BINARY = utils.C_APDU(CLA=0xff, INS=0xb0, Le=0)
+    COMMANDS = dict(building_blocks.Card_with_read_binary.COMMANDS)
+    COMMANDS.update(RFID_Card.COMMANDS)
 
 class Mifare_Card(RFID_Storage_Card):
-    pass
+    DATA_UNIT_SIZE=4
 
 class Mifare_Classic_Card(Mifare_Card):
     DRIVER_NAME = ["Mifare Classic"]

@@ -1,8 +1,9 @@
 import TLV_utils
 from generic_card import *
 from generic_application import Application
+import building_blocks
 
-class ISO_7816_4_Card(Card):
+class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
     APDU_SELECT_FILE = C_APDU(ins=0xa4, le=0)
     APDU_READ_BINARY = C_APDU(ins=0xb0,le=0)
@@ -56,44 +57,12 @@ class ISO_7816_4_Card(Card):
         if len(result.data) > 0:
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
-
-    def read_binary_file(self, offset = 0):
-        """Read from the currently selected EF.
-        Repeat calls to READ BINARY as necessary to get the whole EF."""
-        
-        if offset >= 1<<15:
-            raise ValueError, "offset is limited to 15 bits"
-        contents = ""
-        had_one = False
-        
-        while True:
-            command = C_APDU(self.APDU_READ_BINARY, p1 = offset >> 8, p2 = (offset & 0xff))
-            result = self.send_apdu(command)
-            if len(result.data) > 0:
-                contents = contents + result.data
-                offset = offset + len(result.data)
-            
-            if not self.check_sw(result.sw):
-                break
-            else:
-                had_one = True
-        
-        if had_one: ## If there was at least one successful pass, ignore any error SW. It probably only means "end of file"
-            self.sw_changed = False
-        
-        return contents
     
     def read_record(self, p1 = 0, p2 = 0, le = 0):
         "Read a record from the currently selected file"
         command = C_APDU(self.APDU_READ_RECORD, p1 = p1, p2 = p2, le = le)
         result = self.send_apdu(command)
         return result.data
-    
-    def cmd_cat(self):
-        "Print a hexdump of the currently selected file (e.g. consecutive READ BINARY)"
-        contents = self.read_binary_file()
-        self.last_result = R_APDU(contents + self.last_sw)
-        print utils.hexdump(contents)
     
     def cmd_read_record(self, p1 = None, p2 = None, le = "0"):
         "Read a record"
@@ -163,11 +132,11 @@ class ISO_7816_4_Card(Card):
         ] )
     
     COMMANDS = dict(Card.COMMANDS)
+    COMMANDS.update(building_blocks.Card_with_read_binary.COMMANDS)
     COMMANDS.update( {
         "select_application": cmd_selectapplication,
         "select_file": cmd_selectfile,
         "cd": cmd_cd,
-        "cat": cmd_cat,
         "open": cmd_open,
         "read_record": cmd_read_record,
         "next_record": cmd_next_record,

@@ -93,3 +93,43 @@ class Card_with_80_aa(Card_with_ls):
         "List EFs in current DF"
         result = self.list_x(2)
         print "EFs: " + ", ".join([utils.hexdump(a, short=True) for a in result])
+
+class Card_with_read_binary:
+    DATA_UNIT_SIZE=1
+    
+    def read_binary_file(self, offset = 0):
+        """Read from the currently selected EF.
+        Repeat calls to READ BINARY as necessary to get the whole EF."""
+        
+        if offset >= 1<<15:
+            raise ValueError, "offset is limited to 15 bits"
+        contents = ""
+        had_one = False
+        
+        while True:
+            command = C_APDU(self.APDU_READ_BINARY, p1 = offset >> 8, p2 = (offset & 0xff))
+            result = self.send_apdu(command)
+            if len(result.data) > 0:
+                contents = contents + result.data
+                offset = offset + (len(result.data) / self.DATA_UNIT_SIZE)
+            
+            if not self.check_sw(result.sw):
+                break
+            else:
+                had_one = True
+        
+        if had_one: ## If there was at least one successful pass, ignore any error SW. It probably only means "end of file"
+            self.sw_changed = False
+        
+        return contents
+    
+    def cmd_cat(self):
+        "Print a hexdump of the currently selected file (e.g. consecutive READ BINARY)"
+        contents = self.read_binary_file()
+        self.last_result = R_APDU(contents + self.last_sw)
+        print utils.hexdump(contents)
+    
+    COMMANDS = {
+        "cat": cmd_cat,
+    }
+    

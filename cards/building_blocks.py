@@ -96,6 +96,7 @@ class Card_with_80_aa(Card_with_ls):
 
 class Card_with_read_binary:
     DATA_UNIT_SIZE=1
+    HEXDUMP_LINELEN=16
     
     def read_binary_file(self, offset = 0):
         """Read from the currently selected EF.
@@ -127,7 +128,7 @@ class Card_with_read_binary:
         "Print a hexdump of the currently selected file (e.g. consecutive READ BINARY)"
         contents = self.read_binary_file()
         self.last_result = R_APDU(contents + self.last_sw)
-        print utils.hexdump(contents)
+        print utils.hexdump(contents,linelen=self.HEXDUMP_LINELEN)
     
     COMMANDS = {
         "cat": cmd_cat,

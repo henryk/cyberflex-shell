@@ -75,6 +75,7 @@ class Mifare_Classic_4k_Card(Mifare_Classic_Card):
 
 class Mifare_Ultralight_Card(Mifare_Card):
     DRIVER_NAME = ["Mifare Ultralight"]
+    HEXDUMP_LINELEN = 4
     
     ATRS = [
         # Ultralight

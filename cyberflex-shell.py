@@ -261,7 +261,7 @@ class Cyberflex_Shell(Shell):
         sys.stdout = self.logger
         print "Logging to %s" % filename
         try:
-            self.logger.println( "ATR of currently inserted card is: %s" % utils.hexdump(self.card.get_atr(), short=True) )
+            self.logger.println( "# ATR of currently inserted card is: %s" % utils.hexdump(self.card.get_atr(), short=True) )
         except (KeyboardInterrupt, SystemExit):
             raise
         except:

@@ -24,3 +24,7 @@
 #  corresponding fingerprint: 0:00640411010131800090005a,P:6700,1,5AAAAAAA,08
 # Passport issued Apr 07: 3b 89 80 01 00 64 04 15 01 02 00 90 00 ee
 #  corresponding fingerprint: 0:006404150102009000ee,P:6700,1,5AAAAAAA,08
+
+0:[^,]*,P[^,]*,[^,]*,[^,]*,80
+    New Zealandic Passport
+# Fixed UID, as reported by Adam Laurie

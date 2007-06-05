@@ -375,6 +375,27 @@ def decode(data, context = None, level = 0, tags=tags):
     
     return "\n".join(result)
 
+def tlv_find_tag(tlv_data, tag, num_results = None):
+    """Find (and return) all instances of tag in the given tlv structure (as returned by unpack).
+    If num_results is specified then at most that many results will be returned."""
+    
+    results = []
+    def find_recursive(tlv_data):
+        for d in tlv_data:
+            t,l,v = d[:3]
+            if t == tag:
+                results.append(d)
+            else:
+                if isinstance(v, list): # FIXME Refactor the whole TLV code into a class
+                    find_recursive(v)
+            
+            if num_results is not None and len(results) >= num_results:
+                return
+    
+    find_recursive(tlv_data)
+    
+    return results
+
 def unpack(data, with_marks = None, offset = 0, include_filler=False):
     result = []
     while len(data) > 0:

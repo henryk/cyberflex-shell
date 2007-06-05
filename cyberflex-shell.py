@@ -190,6 +190,26 @@ class Cyberflex_Shell(Shell):
         finally:
             fp.close()
     
+    def cmd_load_response(self, filename, start=None, end=None):
+        "Load the data from a file and pretend it was the last response from the card.  start and end are optional"
+        fp = file(filename, "r")
+        try:
+            data = fp.read()
+        finally:
+            fp.close()
+        datalen = len(data)
+        
+        if start is not None:
+            start = (datalen + (int(start,0) % datalen) ) % datalen
+        else:
+            start = 0
+        if end is not None:
+            end = (datalen + (int(end,0) % datalen) ) % datalen
+        else:
+            end = datalen
+        
+        self.card.last_result = utils.R_APDU(data[start:end] + "\x00\x00")
+    
     def cmd_disconnect(self, *args):
         "Close the connection to the currently inserted card"
         self.unregister_post_hook(self._print_sw)
@@ -396,6 +416,7 @@ class Cyberflex_Shell(Shell):
         "list_readers": cmd_listreaders,
         "eval": cmd_eval,
         "save_response": cmd_save_response,
+        "load_response": cmd_load_response,
         "fancy": cmd_fancy,
         "enc": cmd_enc,
         "log": cmd_log,

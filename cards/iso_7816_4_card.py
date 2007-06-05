@@ -121,6 +121,11 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=self.TLV_OBJECTS)
     
+    def cmd_pretendapplication(self, application):
+        "Pretend that an application has been selected on the card without actually sending a SELECT APPLICATION. Basically for debugging purposes."
+        aid = self.resolve_symbolic_aid(application)
+        Application.load_applications(self, aid)
+    
     ATRS = list(Card.ATRS)
     ATRS.extend( [
             (".*", None),   ## For now we accept any card
@@ -135,6 +140,7 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     COMMANDS.update(building_blocks.Card_with_read_binary.COMMANDS)
     COMMANDS.update( {
         "select_application": cmd_selectapplication,
+        "pretend_application": cmd_pretendapplication,
         "select_file": cmd_selectfile,
         "cd": cmd_cd,
         "open": cmd_open,

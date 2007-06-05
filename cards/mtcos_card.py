@@ -217,6 +217,7 @@ class MTCOS_Card_RFID(MTCOS_Card,RFID_Card):
     ATRS = [
             ("3b8980014d54434f53730102013f", None),
     ]
+    RFID_Card.STOP_ATRS.append( ("3b8980014d54434f53730102013f", None) )
     
     STOP_ATRS = []
     

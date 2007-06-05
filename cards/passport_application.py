@@ -1,5 +1,5 @@
 from generic_application import Application
-import struct, sha, binascii, os
+import struct, sha, binascii, os, datetime
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
 from generic_card import Card
@@ -232,7 +232,14 @@ class Passport_Application(Application):
             return Card.check_sw(self, sw, purpose)
         else:
             return sw not in ("\x69\x87", "\x69\x88")
-
+    
+    def cmd_parse_biometrics(self):
+        "Parse the biometric information contained in the last result."
+        cbeff = CBEFF.from_data(self.last_result.data)
+        basename = datetime.datetime.now().isoformat()
+        for index, biometric in enumerate(cbeff.biometrics):
+            biometric.store(basename= "biometric_%s_%02i" % (basename, index))
+    
     def _read_ef(self, fid):
         result = self.open_file(fid, 0x0c)
         if not result.sw == "\x6a\x82":
@@ -254,6 +261,7 @@ class Passport_Application(Application):
         "read_com": cmd_read_com,
         "read_sod": cmd_read_sod,
         "read_dg": cmd_read_dg,
+        "parse_biometrics": cmd_parse_biometrics,
     }
     
     DATA_GROUPS = {
@@ -317,6 +325,171 @@ class Passport_Application(Application):
         0x5F1F: (decode_mrz, "Machine Readable Zone data"),
     }
     
+    identifier("context_biometric_group")
+    identifier("context_biometric")
+    identifier("context_biometric_header")
+    
+    TLV_OBJECTS[context_EFdg2] = {
+        0x7F61: (TLV_utils.recurse, "Biometric Information Group", context_biometric_group)
+    }
+    
+    TLV_OBJECTS[context_biometric_group] = {
+        0x02: (TLV_utils.number, "Number of instances of this biometric"),
+        0x7f60: (TLV_utils.recurse, "Biometric Information Template", context_biometric),
+    }
+    
+    TLV_OBJECTS[context_biometric] = {
+        0xA1: (TLV_utils.recurse, "Biometric Header Template (BHT)", context_biometric_header),
+        0x5F2E: (TLV_utils.binary, "Biometric data"),
+    }
+    
+    TLV_OBJECTS[context_biometric_header] = {
+        0x80: (decode_version_number, "ICAO header version"),
+        0x81: (TLV_utils.binary, "Biometric type"), # FIXME parse these datafields
+        0x82: (TLV_utils.binary, "Biometric feature"),
+        0x83: (TLV_utils.binary, "Creation date and time"),
+        0x84: (TLV_utils.binary, "Validity period"),
+        0x86: (TLV_utils.binary, "Creator of the biometric reference data (PID)"),
+        0x87: (TLV_utils.binary, "Format owner"), 
+        0x88: (TLV_utils.binary, "Format type"),
+    }
+    
+class FAC:
+    class Face:
+        HEADER_FIELDS = [
+            ("length", "I"),
+            ("number_of_feature_points", "H"),
+            ("gender", "B"),
+            ("eye_color", "B"),
+            ("hair_color", "B"),
+            ("feature_mask", "3s"),
+            ("expression", "H"),
+            ("pose_yaw", "B"),
+            ("pose_pitch", "B"),
+            ("pose_roll", "B"),
+            ("pose_uy", "B"),
+            ("pose_up", "B"),
+            ("pose_ur", "B"),
+        ]
+        IMAGE_FIELDS = [
+            ("facial_image_type", "B"),
+            ("image_data_type","B"),
+            ("width","H"),
+            ("height","H"),
+            ("image_color_space","B"),
+            ("source_type","B"),
+            ("device_type","H"),
+            ("quality","H"),
+        ]
+        
+        def __init__(self, data, offset_, type):
+            self.type = type
+            offset = offset_
+            fib = data[offset:offset+20]
+            
+            fields = struct.unpack(">"+"".join([e[1] for e in self.HEADER_FIELDS]), fib)
+            for index, value in enumerate(fields):
+                setattr(self, self.HEADER_FIELDS[index][0], value)
+            
+            self.feature_mask = 256**2 * self.feature_mask[0] + 256 * self.feature_mask[1] + self.feature_mask[2]
+            
+            offset = offset+20
+            for i in range(self.number_of_feature_points):
+                offset = offset+8 # FUTURE Does anyone use these feature points?
+            
+            iib = data[offset:offset+12]
+            
+            fields = struct.unpack(">"+"".join([e[1] for e in self.IMAGE_FIELDS]), iib)
+            for index, value in enumerate(fields):
+                setattr(self, self.IMAGE_FIELDS[index][0], value)
+                print "%s=%s" % (self.IMAGE_FIELDS[index][0], value)
+            
+            offset = offset+12
+            
+            self.data = data[offset:offset_+self.length]
+        
+        FILE_EXTENSIONS = {
+            0: "jpg",
+            1: "jp2",
+        }
+        def store(self, basename):
+            name = "%s.%s" % (basename, self.FILE_EXTENSIONS.get(self.image_data_type, "bin"))
+            fp = file(name, "w")
+            try:
+                fp.write(self.data)
+            finally:
+                fp.close()
+    
+    def __init__(self, data, type=0x008):
+        assert data[0:4] == "FAC\x00"
+        assert data[4:8] == "010\x00"
+        self.record_length, self.number_of_facial_images = struct.unpack(">IH", data[8:14])
+        
+        assert len(data) == self.record_length
+        offset = 14
+        
+        self.faces = []
+        
+        for index in range(self.number_of_facial_images):
+            self.faces.append( self.Face(data, offset, type) )
+            offset += self.faces[-1].length
+    
+    def store(self, basename):
+        for index, face in enumerate(self.faces):
+            face.store(basename="%s_%02i" % (basename, index))
+    
+# Note: Probably all of the code in this class is wrong. I'm just guessing from examples and parts of specifications I didn't fully read --Henryk
+class CBEFF:
+    def __init__(self, structure, top_tag = 0x7F60):
+        "Create a new CBEFF instance from a nested TLV structure (as returned by TLV_utils.unpack)."
+        
+        self.biometrics = []
+        self.unknown_biometrics = []
+        
+        blocks = TLV_utils.tlv_find_tag(structure, top_tag)
+        for block in blocks:
+            self.addbiometric(block[2])
+    
+    def addbiometric(self, value):
+        bht = value[0]
+        bdb = value[1]
+        
+        format_owner = None
+        format_type = None
+        for d in bht[2]:
+            t,l,v = d[:3]
+            if t == 0x87:
+                format_owner = 256*ord(v[0]) + ord(v[1])
+            elif t == 0x88:
+                format_type = 256*ord(v[0]) + ord(v[1])
+        
+        if not hasattr(self, "addbiometric_%s_%s" % (format_owner, format_type)):
+            print "Unknown Biometric owner/type: %s/%s" % (format_owner, format_type)
+            self.unknown_biometrics.append( (bht, bdb) )
+            return
+        else:
+            return getattr(self, "addbiometric_%s_%s" % (format_owner, format_type))(bht, bdb)
+    
+    def addbiometric_257_8(self, bht, bdb):
+        if not bdb[0] == 0x5F2E:
+            self.unknown_biometrics.append( (bht, bdb) )
+            return
+        
+        self.biometrics.append( FAC( bdb[2], type=0x0008 ) )
+    
+    def addbiometric_257_1281(self, bht, bdb):
+        if not bdb[0] == 0x5F2E:
+            self.unknown_biometrics.append( (bht, bdb) )
+            return
+        
+        self.biometrics.append( FAC( bdb[2], type=0x0501) )
+    
+    def from_data(cls, data, offset = 0, length = None, **kwargs):
+        if length is None:
+            length = len(data) - offset
+        structure = TLV_utils.unpack(data[offset:offset+length])
+        return cls(structure=structure, **kwargs)
+    from_data = classmethod(from_data)
 
 if __name__ == "__main__":
     mrz1 = "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<"
@@ -338,3 +511,7 @@ if __name__ == "__main__":
     print hexdump(Passport_Application._mac(k, sniffed_Eifd))
     print hexdump(sniffed_Mifd)
     
+    dg2 = file("testdg2","r").read()
+    cbeff = CBEFF.from_data(dg2)
+    for index, biometric in enumerate(cbeff.biometrics):
+        biometric.store(basename= "biometric_testdg2_%02i" % index)

@@ -1,5 +1,5 @@
 from generic_application import Application
-import struct, sha, binascii, os, datetime
+import struct, sha, binascii, os, datetime, sys
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
 from generic_card import Card
@@ -491,6 +491,366 @@ class CBEFF:
         return cls(structure=structure, **kwargs)
     from_data = classmethod(from_data)
 
+class PassportParseError(Exception):
+    pass
+
+_default_empty_mrz_data = ("","")
+class Passport(object):
+    "An ICAO compliant travel document"
+    COUNTRY_CODES = {
+        # Source: http://www.highprogrammer.com/alan/numbers/mrp.html#countrycodes
+        "AFG": ("Afghanistan", ""),
+        "ALB": ("Albania", ""),
+        "DZA": ("Algeria", ""),
+        "ASM": ("American Samoa", ""),
+        "AND": ("Andorra", ""),
+        "AGO": ("Angola", ""),
+        "AIA": ("Anguilla", ""),
+        "ATA": ("Antarctica", ""),
+        "ATG": ("Antigua and Barbuda", ""),
+        "ARG": ("Argentina", ""),
+        "ARM": ("Armenia", ""),
+        "ABW": ("Aruba", ""),
+        "AUS": ("Australia", ""),
+        "AUT": ("Austria", ""),
+        "AZE": ("Azerbaijan", ""),
+        "BHS": ("Bahamas", ""),
+        "BHR": ("Bahrain", ""),
+        "BGD": ("Bangladesh", ""),
+        "BRB": ("Barbados", ""),
+        "BLR": ("Belarus", ""),
+        "BEL": ("Belgium", ""),
+        "BLZ": ("Belize", ""),
+        "BEN": ("Benin", ""),
+        "BMU": ("Bermuda", ""),
+        "BTN": ("Bhutan", ""),
+        "BOL": ("Bolivia", ""),
+        "BIH": ("Bosnia and Herzegovina", ""),
+        "BWA": ("Botswana", ""),
+        "BVT": ("Bouvet Island", ""),
+        "BRA": ("Brazil", ""),
+        "IOT": ("British Indian Ocean Territory", ""),
+        "BRN": ("Brunei Darussalam", ""),
+        "BGR": ("Bulgaria", ""),
+        "BFA": ("Burkina Faso", ""),
+        "BDI": ("Burundi", ""),
+        "KHM": ("Cambodia", ""),
+        "CMR": ("Cameroon", ""),
+        "CAN": ("Canada", ""),
+        "CPV": ("Cape Verde", ""),
+        "CYM": ("Cayman Islands", ""),
+        "CAF": ("Central African Republic", ""),
+        "TCD": ("Chad", ""),
+        "CHL": ("Chile", ""),
+        "CHN": ("China", ""),
+        "CXR": ("Christmas Island", ""),
+        "CCK": ("Cocos (Keeling) Islands", ""),
+        "COL": ("Colombia", ""),
+        "COM": ("Comoros", ""),
+        "COG": ("Congo", ""),
+        "COK": ("Cook Islands", ""),
+        "CRI": ("Costa Rica", ""),
+        "CIV": ("Ct d'Ivoire", ""),
+        "HRV": ("Croatia", ""),
+        "CUB": ("Cuba", ""),
+        "CYP": ("Cyprus", ""),
+        "CZE": ("Czech Republic", ""),
+        "PRK": ("Democratic People's Republic of Korea", ""),
+        "COD": ("Democratic Republic of the Congo", ""),
+        "DNK": ("Denmark", ""),
+        "DJI": ("Djibouti", ""),
+        "DMA": ("Dominica", ""),
+        "DOM": ("Dominican Republic", ""),
+        "TMP": ("East Timor", ""),
+        "ECU": ("Ecuador", ""),
+        "EGY": ("Egypt", ""),
+        "SLV": ("El Salvador", ""),
+        "GNQ": ("Equatorial Guinea", ""),
+        "ERI": ("Eritrea", ""),
+        "EST": ("Estonia", ""),
+        "ETH": ("Ethiopia", ""),
+        "FLK": ("Falkland Islands (Malvinas)", ""),
+        "FRO": ("Faeroe Islands", ""),
+        "FJI": ("Fiji", ""),
+        "FIN": ("Finland", ""),
+        "FRA": ("France", ""),
+        "FXX": ("France, Metropolitan", ""),
+        "GUF": ("French Guiana", ""),
+        "PYF": ("French Polynesia", ""),
+        "GAB": ("Gabon", ""),
+        "GMB": ("Gambia", ""),
+        "GEO": ("Georgia", ""),
+        "D":   ("Germany", ""),
+        "GHA": ("Ghana", ""),
+        "GIB": ("Gibraltar", ""),
+        "GRC": ("Greece", ""),
+        "GRL": ("Greenland", ""),
+        "GRD": ("Grenada", ""),
+        "GLP": ("Guadeloupe", ""),
+        "GUM": ("Guam", ""),
+        "GTM": ("Guatemala", ""),
+        "GIN": ("Guinea", ""),
+        "GNB": ("Guinea-Bissau", ""),
+        "GUY": ("Guyana", ""),
+        "HTI": ("Haiti", ""),
+        "HMD": ("Heard and McDonald Islands", ""),
+        "VAT": ("Holy See (Vatican City State)", ""),
+        "HND": ("Honduras", ""),
+        "HKG": ("Hong Kong", ""),
+        "HUN": ("Hungary", ""),
+        "ISL": ("Iceland", ""),
+        "IND": ("India", ""),
+        "IDN": ("Indonesia", ""),
+        "IRN": ("Iran, Islamic Republic of", ""),
+        "IRQ": ("Iraq", ""),
+        "IRL": ("Ireland", ""),
+        "ISR": ("Israel", ""),
+        "ITA": ("Italy", ""),
+        "JAM": ("Jamaica", ""),
+        "JPN": ("Japan", ""),
+        "JOR": ("Jordan", ""),
+        "KAZ": ("Kazakhstan", ""),
+        "KEN": ("Kenya", ""),
+        "KIR": ("Kiribati", ""),
+        "KWT": ("Kuwait", ""),
+        "KGZ": ("Kyrgyzstan", ""),
+        "LAO": ("Lao People's Democratic Republic", ""),
+        "LVA": ("Latvia", ""),
+        "LBN": ("Lebanon", ""),
+        "LSO": ("Lesotho", ""),
+        "LBR": ("Liberia", ""),
+        "LBY": ("Libyan Arab Jamahiriya", ""),
+        "LIE": ("Liechtenstein", ""),
+        "LTU": ("Lithuania", ""),
+        "LUX": ("Luxembourg", ""),
+        "MDG": ("Madagascar", ""),
+        "MWI": ("Malawi", ""),
+        "MYS": ("Malaysia", ""),
+        "MDV": ("Maldives", ""),
+        "MLI": ("Mali", ""),
+        "MLT": ("Malta", ""),
+        "MHL": ("Marshall Islands", ""),
+        "MTQ": ("Martinique", ""),
+        "MRT": ("Mauritania", ""),
+        "MUS": ("Mauritius", ""),
+        "MYT": ("Mayotte", ""),
+        "MEX": ("Mexico", ""),
+        "FSM": ("Micronesia, Federated States of", ""),
+        "MCO": ("Monaco", ""),
+        "MNG": ("Mongolia", ""),
+        "MSR": ("Montserrat", ""),
+        "MAR": ("Morocco", ""),
+        "MOZ": ("Mozambique", ""),
+        "MMR": ("Myanmar", ""),
+        "NAM": ("Namibia", ""),
+        "NRU": ("Nauru", ""),
+        "NPL": ("Nepal", ""),
+        "NLD": ("Netherlands, Kingdom of the", ""),
+        "ANT": ("Netherlands Antilles", ""),
+        "NTZ": ("Neutral Zone", ""),
+        "NCL": ("New Caledonia", ""),
+        "NZL": ("New Zealand", ""),
+        "NIC": ("Nicaragua", ""),
+        "NER": ("Niger", ""),
+        "NGA": ("Nigeria", ""),
+        "NIU": ("Niue", ""),
+        "NFK": ("Norfolk Island", ""),
+        "MNP": ("Northern Mariana Islands", ""),
+        "NOR": ("Norway", ""),
+        "OMN": ("Oman", ""),
+        "PAK": ("Pakistan", ""),
+        "PLW": ("Palau", ""),
+        "PAN": ("Panama", ""),
+        "PNG": ("Papua New Guinea", ""),
+        "PRY": ("Paraguay", ""),
+        "PER": ("Peru", ""),
+        "PHL": ("Philippines", ""),
+        "PCN": ("Pitcairn", ""),
+        "POL": ("Poland", ""),
+        "PRT": ("Portugal", ""),
+        "PRI": ("Puerto Rico", ""),
+        "QAT": ("Qatar", ""),
+        "KOR": ("Republic of Korea", ""),
+        "MDA": ("Republic of Moldova", ""),
+        "REU": ("Ruion", ""),
+        "ROM": ("Romania", ""),
+        "RUS": ("Russian Federation", ""),
+        "RWA": ("Rwanda", ""),
+        "SHN": ("Saint Helena", ""),
+        "KNA": ("Saint Kitts and Nevis", ""),
+        "LCA": ("Saint Lucia", ""),
+        "SPM": ("Saint Pierre and Miquelon", ""),
+        "VCT": ("Saint Vincent and the Grenadines", ""),
+        "WSM": ("Samoa", ""),
+        "SMR": ("San Marino", ""),
+        "STP": ("Sao Tome and Principe", ""),
+        "SAU": ("Saudi Arabia", ""),
+        "SEN": ("Senegal", ""),
+        "SYC": ("Seychelles", ""),
+        "SLE": ("Sierra Leone", ""),
+        "SGP": ("Singapore", ""),
+        "SVK": ("Slovakia", ""),
+        "SVN": ("Slovenia", ""),
+        "SLB": ("Solomon Islands", ""),
+        "SOM": ("Somalia", ""),
+        "ZAF": ("South Africa", ""),
+        "SGS": ("South Georgia and the South Sandwich Island", ""),
+        "ESP": ("Spain", ""),
+        "LKA": ("Sri Lanka", ""),
+        "SDN": ("Sudan", ""),
+        "SUR": ("Suriname", ""),
+        "SJM": ("Svalbard and Jan Mayen Islands", ""),
+        "SWZ": ("Swaziland", ""),
+        "SWE": ("Sweden", ""),
+        "CHE": ("Switzerland", ""),
+        "SYR": ("Syrian Arab Republic", ""),
+        "TWN": ("Taiwan Province of China", ""),
+        "TJK": ("Tajikistan", ""),
+        "THA": ("Thailand", ""),
+        "MKD": ("The former Yugoslav Republic of Macedonia", ""),
+        "TGO": ("Togo", ""),
+        "TKL": ("Tokelau", ""),
+        "TON": ("Tonga", ""),
+        "TTO": ("Trinidad and Tobago", ""),
+        "TUN": ("Tunisia", ""),
+        "TUR": ("Turkey", ""),
+        "TKM": ("Turkmenistan", ""),
+        "TCA": ("Turks and Caicos Islands", ""),
+        "TUV": ("Tuvalu", ""),
+        "UGA": ("Uganda", ""),
+        "UKR": ("Ukraine", ""),
+        "ARE": ("United Arab Emirates", ""),
+        "GBR": ("United Kingdom of Great Britain and Northern Ireland", "Citizen"),
+        "GBD": ("United Kingdom of Great Britain and Northern Ireland", "Dependent territories citizen"),
+        "GBN": ("United Kingdom of Great Britain and Northern Ireland", "National (overseas)"),
+        "GBO": ("United Kingdom of Great Britain and Northern Ireland", "Overseas citizen"),
+        "GBP": ("United Kingdom of Great Britain and Northern Ireland", "Protected Person"),
+        "GBS": ("United Kingdom of Great Britain and Northern Ireland", "Subject"),
+        "TZA": ("United Republic of Tanzania", ""),
+        "USA": ("United States of America", ""),
+        "UMI": ("United States of America Minor Outlying Islands", ""),
+        "URY": ("Uruguay", ""),
+        "UZB": ("Uzbekistan", ""),
+        "VUT": ("Vanuatu", ""),
+        "VEN": ("Venezuela", ""),
+        "VNM": ("Viet Nam", ""),
+        "VGB": ("Virgin Islands (Great Britian)", ""),
+        "VIR": ("Virgin Islands (United States)", ""),
+        "WLF": ("Wallis and Futuna Islands", ""),
+        "ESH": ("Western Sahara", ""),
+        "YEM": ("Yemen", ""),
+        "ZAR": ("Zaire", ""),
+        "ZMB": ("Zambia", ""),
+        "ZWE": ("Zimbabwe", ""),
+        
+        # Other
+        "UTO": ("Utopia", ""),
+    }    
+    def __init__(self, mrz_data = _default_empty_mrz_data):
+        """Initialize an instance. 
+        Optional argument mrz_data must be a sequence of strings representing the individual lines (at least 
+        two) from the machine readable zone."""
+        self.given_mrz = mrz_data
+        try:
+            if mrz_data is not _default_empty_mrz_data:
+                self._parse_mrz(mrz_data)
+        except PassportParseError:
+            self.parse_failed = True
+            self.parse_error = sys.exc_info()[1]
+        else:
+            self.parse_failed = False
+            self.parse_error = ""
+        
+        print self.parse_error
+    
+    def from_card(cls, card, mrz_data = _default_empty_mrz_data):
+        """Initialize an instance and populate it from a card.
+        Mandatory argument card must be a Passport_Application object or at least an ISO_7816_4_Card object 
+        (to which a select_application() call will be issued). This card object will then be used to fetch
+        all data before returning from the constructor. Note that for a BAC protected passport you will need
+        to specify at least the second element in mrz_data."""
+    from_card = classmethod(from_card)
+    
+    def from_file(cls, filename):
+        """Initialize an instance and populate it from a savefile.
+        Mandatory argument filename must be the name of a file that was previously generated with
+        the to_file() method (or be in the same format)."""
+    from_file = classmethod(from_file)
+    
+    def from_files(cls, basename = None, filemap = None):
+        """Initialize an instance and populate it from a number of files.
+        basename must be the base name of a set of files that were generated with the to_files() method. The 
+        format is the same one that is being used by the Golden Reader Tool. Alternatively you may give
+        the filemap argument which must be a mapping to filenames with the keys "COM", "SOD", "DG1", "DG2", etc.
+        (Only COM, SOD and DG1 are mandatory.)
+        One of basename or filemap _must_ be specified."""
+    from_files = classmethod(from_files)
+    
+    def calculate_check_digit(data, digit=None, field=None):
+        """Calculate a check digit. If digit is not None then it will be compared to the calculated
+        check digit and a PassportParseError will be raised on a mismatch. Optional argument field
+        will be used for the description in the exception (and is ignored otherwise)."""
+        numbers = [
+            (e.isdigit() and (int(e),) or (e=="<" and (0,) or (e.isalpha() and (ord(e)-55,) or (0,) ) ) )[0]
+            for e in data
+        ]
+        checksum = sum([ e * [7,3,1][i%3] for i,e in enumerate(numbers) ]) % 10
+        print "checksum(%s)=%s =?= %s" % (data, checksum, digit)
+        if not digit is None and not (digit.isdigit() and checksum == int(digit)):
+            raise PassportParseError, "Incorrect check digit%s. Is %s, should be %s." % ((field is not None and " in field '%s'" % field or ""), checksum, digit)
+        return checksum
+    calculate_check_digit = staticmethod(calculate_check_digit)
+    
+    def _parse_mrz(self, mrz_data):
+        self.type, self.issuer, self.name = "", "", ("", "")
+        self.document_no, self.nationality, self.date_of_birth, self.sex, self.expiration_date, self.optional = "", "", "", "", "", ""
+        
+        if mrz_data[0].strip() != "":
+            mrz1 = mrz_data[0].replace("<", " ")
+            self.type = mrz1[0:2].strip()
+            self.issuer = mrz1[2:5].strip()
+            n = mrz1[5:].strip().split("  ", 1)
+            self.name = [n[0]]
+            self.name = self.name + n[1].split(" ")
+        if mrz_data[1].strip() != "":
+            mrz2 = mrz_data[1]
+            self.document_no = mrz2[:9].strip("<")
+            if mrz2[9] == "<": # document number check digit, or filler character to indicate document number longer than 9 characters
+                expanded_document_no = True
+            else:
+                expanded_document_no = False
+                self.calculate_check_digit(mrz2[:9], mrz2[9], "Document number")
+            self.nationality = mrz2[10:13]
+            
+            self.date_of_birth = mrz2[13:19]
+            self.calculate_check_digit(mrz2[13:19], mrz2[19], "Date of birth")
+            
+            self.sex = mrz2[20]
+            
+            self.expiration_date = mrz2[21:27]
+            self.calculate_check_digit(mrz2[21:27], mrz2[27], "Date of expiration")
+            
+            opt_field = mrz2[28:-2]
+            if not expanded_document_no:
+                self.optional = opt_field.strip("<")
+                if mrz2[-2] != "<":
+                    self.calculate_check_digit(opt_field, mrz2[-2], "Optional data")
+            else:
+                splitted_opt_field = opt_field.split("<", 1)
+                self.document_no = self.document_no + splitted_opt_field[0][:-1]
+                self.calculate_check_digit(self.document_no, splitted_opt_field[0][-1], "Expanded document number")
+                
+                if len(splitted_opt_field) > 1:
+                    self.optional = splitted_opt_field[1].strip("<")
+                    if mrz2[-2] != "<":
+                        self.calculate_check_digit(splitted_opt_field[1], mrz2[-2], "Optional data")
+            
+            self.calculate_check_digit(mrz2[:-1], mrz2[-1], "Second line of machine readable zone")
+        
+        print self.type, self.issuer, self.name
+        print self.document_no, self.nationality, self.date_of_birth, self.sex, self.expiration_date, self.optional
+    
+
 if __name__ == "__main__":
     mrz1 = "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<"
     mrz2 = "L898902C<3UTO6908061F9406236ZE184226B<<<<<14"
@@ -511,7 +871,12 @@ if __name__ == "__main__":
     print hexdump(Passport_Application._mac(k, sniffed_Eifd))
     print hexdump(sniffed_Mifd)
     
-    dg2 = file("testdg2","r").read()
-    cbeff = CBEFF.from_data(dg2)
-    for index, biometric in enumerate(cbeff.biometrics):
-        biometric.store(basename= "biometric_testdg2_%02i" % index)
+##    dg2 = file("testdg2","r").read()
+##    cbeff = CBEFF.from_data(dg2)
+##    for index, biometric in enumerate(cbeff.biometrics):
+##        biometric.store(basename= "biometric_testdg2_%02i" % index)
+    
+    p = Passport([mrz1, mrz2])
+    
+    
+    

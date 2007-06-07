@@ -1,6 +1,6 @@
 import utils, TLV_utils, crypto_utils, traceback
 from iso_7816_4_card import *
-import building_blocks
+import building_blocks, generic_card
 
 MODE_ECB = 0
 MODE_CBC = 1
@@ -180,8 +180,9 @@ class TCOS_Security_Environment(object):
                 t = tag & ~(0x01)
                 if t == 0x84:
                     value_ = self.pad(value)
-                    print "| Tag 0x%02x, length 0x%02x, encrypting (with ISO padding): " % (tag, length)
-                    print "|| " + "\n|| ".join( utils.hexdump( value_ ).splitlines() )
+                    if generic_card.DEBUG:
+                        print "| Tag 0x%02x, length 0x%02x, encrypting (with ISO padding): " % (tag, length)
+                        print "|| " + "\n|| ".join( utils.hexdump( value_ ).splitlines() )
                     
                     value = crypto_utils.cipher( True, 
                         self.get_cipherspec(config),
@@ -189,14 +190,16 @@ class TCOS_Security_Environment(object):
                         value_,
                         self.get_iv(config) )
                     
-                    print "| Encrypted result of length 0x%02x:" % len(value)
-                    print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
-                    print
+                    if generic_card.DEBUG:
+                        print "| Encrypted result of length 0x%02x:" % len(value)
+                        print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
+                        print
                 elif t == 0x86:
                     pi = value[0]
                     value_ = self.pad(value[1:], ord(pi))
-                    print "| Tag 0x%02x, length 0x%02x, encrypting (with padding type %x): " % (tag, length, ord(pi))
-                    print "|| " + "\n|| ".join( utils.hexdump( value_ ).splitlines() )
+                    if generic_card.DEBUG:
+                        print "| Tag 0x%02x, length 0x%02x, encrypting (with padding type %x): " % (tag, length, ord(pi))
+                        print "|| " + "\n|| ".join( utils.hexdump( value_ ).splitlines() )
                     
                     value = pi + crypto_utils.cipher( True,
                         self.get_cipherspec(config),
@@ -204,9 +207,10 @@ class TCOS_Security_Environment(object):
                         value_,
                         self.get_iv(config) )
                     
-                    print "| Encrypted result of length 0x%02x:" % len(value)
-                    print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
-                    print
+                    if generic_card.DEBUG:
+                        print "| Encrypted result of length 0x%02x:" % len(value)
+                        print "|| " + "\n|| ".join( utils.hexdump(value).splitlines() )
+                        print
                 
                 result.append( (tag, length, value) )
             else: # Ignore
@@ -227,9 +231,10 @@ class TCOS_Security_Environment(object):
             marks = len(data) > 3 and data[3] or ()
             t = tag & ~(0x01)
             if t == 0x84:
-                print
-                print "| Tag 0x%02x, length 0x%02x, encrypted (with ISO padding): " % (tag, length)
-                print "|| " + "\n|| ".join( utils.hexdump( value ).splitlines() )
+                if generic_card.DEBUG:
+                    print
+                    print "| Tag 0x%02x, length 0x%02x, encrypted (with ISO padding): " % (tag, length)
+                    print "|| " + "\n|| ".join( utils.hexdump( value ).splitlines() )
                 
                 value_ = crypto_utils.cipher( False, 
                     self.get_cipherspec(config),
@@ -237,8 +242,9 @@ class TCOS_Security_Environment(object):
                     value,
                     self.get_iv(config) )
                 
-                print "| Decrypted result of length 0x%02x:" % len(value_)
-                print "|| " + "\n|| ".join( utils.hexdump(value_).splitlines() )
+                if generic_card.DEBUG:
+                    print "| Decrypted result of length 0x%02x:" % len(value_)
+                    print "|| " + "\n|| ".join( utils.hexdump(value_).splitlines() )
                 
                 value = self.unpad(value_)
                 
@@ -248,9 +254,10 @@ class TCOS_Security_Environment(object):
                 marks = marks + (self.MARK_ENCRYPT,)
             elif t == 0x86:
                 pi = value[0]
-                print
-                print "| Tag 0x%02x, length 0x%02x, decrypting (with padding type %x): " % (tag, length, ord(pi))
-                print "|| " + "\n|| ".join( utils.hexdump( value[1:] ).splitlines() )
+                if generic_card.DEBUG:
+                    print
+                    print "| Tag 0x%02x, length 0x%02x, decrypting (with padding type %x): " % (tag, length, ord(pi))
+                    print "|| " + "\n|| ".join( utils.hexdump( value[1:] ).splitlines() )
                 
                 value_ = crypto_utils.cipher( False,
                     self.get_cipherspec(config),
@@ -258,8 +265,9 @@ class TCOS_Security_Environment(object):
                     value[1:],
                     self.get_iv(config) )
                 
-                print "| Decrypted result of length 0x%02x:" % len(value_)
-                print "|| " + "\n|| ".join( utils.hexdump(value_).splitlines() )
+                if generic_card.DEBUG:
+                    print "| Decrypted result of length 0x%02x:" % len(value_)
+                    print "|| " + "\n|| ".join( utils.hexdump(value_).splitlines() )
                 
                 value = self.unpad(value_, ord(pi))
                 
@@ -335,8 +343,9 @@ class TCOS_Security_Environment(object):
                 startblock = ""
                 if apdu.cla & 0x0c == 0x0c:
                     startblock = apdu.render()[:4]
-                cct = self.calculate_cct(config, tlv_data, startblock)
-                print
+                cct = self.calculate_cct(config, tlv_data, startblock, print_buffer=generic_card.DEBUG)
+                if generic_card.DEBUG:
+                    print
                 
                 data = tuple( (0x8e, len(cct), cct) + data[3:] )
             result.append(data)
@@ -349,7 +358,8 @@ class TCOS_Security_Environment(object):
         if config.algorithm is None: ## FIXME: Find out the correct way to determine this
             return tlv_data
         
-        print
+        if generic_card.DEBUG:
+            print
         cct_claimed = None
         result = []
         
@@ -360,21 +370,24 @@ class TCOS_Security_Environment(object):
                 result.append( data )
         
         if cct_claimed is None:
-            print "| CRYPTOGRAPHIC CHECKSUM VERIFICATION ERROR"
-            print "| No cryptographic checksum was included in the response"
+            if generic_card.DEBUG:
+                print "| CRYPTOGRAPHIC CHECKSUM VERIFICATION ERROR"
+                print "| No cryptographic checksum was included in the response"
             return tlv_data
         else:
-            cct = self.calculate_cct(config, tlv_data)
+            cct = self.calculate_cct(config, tlv_data, print_buffer=generic_card.DEBUG)
         
         if len(cct_claimed) >= 4 and cct.startswith(cct_claimed):
-            print "| Cryptographic checksum verifies OK"
+            if generic_card.DEBUG:
+                print "| Cryptographic checksum verifies OK"
             return result
         else:
-            print "| CRYPTOGRAPHIC CHECKSUM VERIFICATION ERROR"
-            print "| Is:"
-            print "|| " + "\n|| ".join( utils.hexdump( cct_claimed ).splitlines() )
-            print "| Should be:"
-            print "|| " + "\n|| ".join( utils.hexdump( cct ).splitlines() )
+            if generic_card.DEBUG:
+                print "| CRYPTOGRAPHIC CHECKSUM VERIFICATION ERROR"
+                print "| Is:"
+                print "|| " + "\n|| ".join( utils.hexdump( cct_claimed ).splitlines() )
+                print "| Should be:"
+                print "|| " + "\n|| ".join( utils.hexdump( cct ).splitlines() )
             return tlv_data
     
     def get_cipherspec(self, config):

@@ -820,7 +820,7 @@ class Passport(object):
             else:
                 expanded_document_no = False
                 self.calculate_check_digit(mrz2[:9], mrz2[9], "Document number")
-            self.nationality = mrz2[10:13]
+            self.nationality = mrz2[10:13].strip("<")
             
             self.date_of_birth = mrz2[13:19]
             self.calculate_check_digit(mrz2[13:19], mrz2[19], "Date of birth")
@@ -845,7 +845,7 @@ class Passport(object):
                     if mrz2[-2] != "<":
                         self.calculate_check_digit(splitted_opt_field[1], mrz2[-2], "Optional data")
             
-            self.calculate_check_digit(mrz2[:-1], mrz2[-1], "Second line of machine readable zone")
+            self.calculate_check_digit(mrz2[0:10]+mrz2[13:20]+mrz2[21:43], mrz2[-1], "Second line of machine readable zone")
         
         print self.type, self.issuer, self.name
         print self.document_no, self.nationality, self.date_of_birth, self.sex, self.expiration_date, self.optional
@@ -877,6 +877,3 @@ if __name__ == "__main__":
 ##        biometric.store(basename= "biometric_testdg2_%02i" % index)
     
     p = Passport([mrz1, mrz2])
-    
-    
-    

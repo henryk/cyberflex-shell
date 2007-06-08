@@ -438,8 +438,6 @@ Machine Readable Zone data</property>
 
       <child>
 	<widget class="GtkImage" id="image">
-	  <property name="width_request">240</property>
-	  <property name="height_request">320</property>
 	  <property name="visible">True</property>
 	  <property name="stock">gtk-missing-image</property>
 	  <property name="icon_size">6</property>

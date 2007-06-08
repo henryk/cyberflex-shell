@@ -1,4 +1,17 @@
 import gtk,gtk.glade,gobject
+import os
+
+class Converter:
+    SUPPORTS = ["jp2"]
+    
+    def convert(type, image_data):
+        stdin, stdout = os.popen2("convert %s:- png:-" % type)
+        stdin.write(image_data)
+        stdin.close()
+        return_data = stdout.read()
+        stdout.close()
+        return return_data
+    convert = staticmethod(convert)
 
 class PassportGUI:
     GLADE_FILE = "gui/passport/passport.glade"
@@ -83,6 +96,9 @@ class PassportGUI:
     def _set_images(self, data):
         self.images = []
         for type, image_data, description in data:
+            if type in Converter.SUPPORTS:
+                image_data = Converter.convert(type, image_data)
+            
             loader = gtk.gdk.PixbufLoader()
             loader.write(image_data)
             loader.close()

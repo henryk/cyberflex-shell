@@ -441,6 +441,9 @@ class FAC:
                 fp.write(self.data)
             finally:
                 fp.close()
+        
+        def get_data(self):
+            return (self.FILE_EXTENSIONS.get(self.image_data_type, "bin"), self.data)
     
     def __init__(self, data, type=0x008):
         assert data[0:4] == "FAC\x00"
@@ -459,6 +462,9 @@ class FAC:
     def store(self, basename):
         for index, face in enumerate(self.faces):
             face.store(basename="%s_%02i" % (basename, index))
+    
+    def get_data(self):
+        return [face.get_data() for face in self.faces]
     
 # Note: Probably all of the code in this class is wrong. I'm just guessing from examples and parts of specifications I didn't fully read --Henryk
 class CBEFF:

@@ -7,6 +7,8 @@ class PassportGUI:
         "Create and show main window."
         self.passport = None
         self.format_strings = {}
+        self.images = []
+        self.now_showing = 0
         self.main_window_xml = gtk.glade.XML(self.GLADE_FILE, "main")
         self.main_window = self.main_window_xml.get_widget("main")
     
@@ -15,7 +17,7 @@ class PassportGUI:
         gtk.main()
     
     def lookup_country(passport, contents):
-        return passport.COUNTRY_CODES.get( contents[0], ("Unknown Code", ) )
+        return passport.COUNTRY_CODES.get( contents[0], ("Unknown Code", "") )
     
     def split_name(passport, contents):
         return (contents[0][0], " ".join(contents[0][1:]))
@@ -70,3 +72,44 @@ class PassportGUI:
                 if not self.format_strings.has_key(dst):
                     self.format_strings[dst] = widget.get_label()
                 widget.set_label( self.format_strings[dst] % transformed[index] )
+        
+        data = []
+        if hasattr(passport, "dg2_cbeff") and passport.dg2_cbeff is not None:
+            for biometric in passport.dg2_cbeff.biometrics:
+                data = data + [(a,b,"Encoded Face") for (a,b) in biometric.get_data()]
+        
+        self._set_images(data)
+    
+    def _set_images(self, data):
+        self.images = []
+        for type, image_data, description in data:
+            loader = gtk.gdk.PixbufLoader()
+            loader.write(image_data)
+            loader.close()
+            pixbuf = loader.get_pixbuf()
+            
+            self.images.append( (pixbuf, description) )
+        
+        self.update_image_shown()
+    
+    def update_image_shown(self):
+        if self.now_showing >= len(self.images):
+            self.now_showing = len(self.images)-1
+        
+        if len(self.images) > 0:
+            pixbuf, description = self.images[self.now_showing]
+        else:
+            self.now_showing = 0
+            pixbuf, description = None, "No image loaded"
+        
+        label = self.main_window_xml.get_widget("image_label")
+        if not self.format_strings.has_key("image_label"):
+            self.format_strings["image_label"] = label.get_label()
+        label.set_label( self.format_strings["image_label"] % {
+            "num": len(self.images) > 0 and (self.now_showing+1) or 0,
+            "count": len(self.images),
+            "description": description,
+        } )
+        
+        if pixbuf is not None:
+            self.main_window_xml.get_widget("image").set_from_pixbuf(pixbuf)

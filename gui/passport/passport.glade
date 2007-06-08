@@ -293,8 +293,8 @@ Optional Data</property>
       <child>
 	<widget class="GtkLabel" id="image_label">
 	  <property name="visible">True</property>
-	  <property name="label" translatable="yes">0 of 0
-Encoded Face</property>
+	  <property name="label" translatable="yes">%(num)s of %(count)s
+%(description)s</property>
 	  <property name="use_underline">False</property>
 	  <property name="use_markup">False</property>
 	  <property name="justify">GTK_JUSTIFY_CENTER</property>
@@ -437,7 +437,7 @@ Machine Readable Zone data</property>
       </child>
 
       <child>
-	<widget class="GtkImage" id="image1">
+	<widget class="GtkImage" id="image">
 	  <property name="width_request">240</property>
 	  <property name="height_request">320</property>
 	  <property name="visible">True</property>

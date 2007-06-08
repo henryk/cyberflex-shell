@@ -2,67 +2,9 @@
 # -*- coding: iso-8859-1 -*-
 
 from utils import pycsc
-import utils, cards, TLV_utils, sys, binascii, time, getopt, traceback, re
+import utils, cards, TLV_utils, sys, binascii, time, traceback, re
 
 STATUS_INTERVAL = 10
-
-OPTIONS = "r:l"
-LONG_OPTIONS = ["reader=", "list-readers"]
-exit_now = False
-reader = None
-
-def list_readers():
-    for index, name in enumerate(pycsc.listReader()):
-        print "%i: %s" % (index, name)
-
-def connect(reader = None):
-    "Open the connection to a card"
-    
-    if reader is None:
-        reader = 0
-    
-    if isinstance(reader, int) or reader.isdigit():
-        reader = int(reader)
-        readerName = pycsc.listReader()[reader]
-    else:
-        readerName = reader
-    
-    newState = pycsc.getStatusChange(ReaderStates=[
-            {'Reader': readerName, 'CurrentState':pycsc.SCARD_STATE_UNAWARE}
-        ]
-    )
-    
-    print "Using reader: %s" % readerName
-    print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
-    
-    if not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT:
-        print "Please insert card ..."
-        
-        last_was_mute = False
-        
-        while not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT \
-            or newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
-            
-            try:
-                newState = pycsc.getStatusChange(ReaderStates=[
-                        {'Reader': readerName, 'CurrentState':newState[0]['EventState']}
-                    ], Timeout = 100 
-                ) ## 100 ms latency from Ctrl-C to abort should be almost unnoticeable by the user
-            except pycsc.PycscException, e:
-                if e.args[0] == 'Command timeout.': pass ## ugly
-                else: raise
-            
-            if newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
-                if not last_was_mute:
-                    print "Card is mute, please retry ..."
-                last_was_mute = True
-            else: 
-                last_was_mute = False
-            
-        print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
-    
-    print "ATR:          %s" % utils.hexdump(newState[0]['Atr'], short = True)
-    return pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
 
 def fingerprint_rfid(card):
     # Need RFID
@@ -241,21 +183,10 @@ def match_fingerprint(fingerprint, database="fingerprints.txt"):
     return ["\n".join(e) for e in results]
     
 if __name__ == "__main__":
-
-    (options, arguments) = getopt.gnu_getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
+    c = utils.CommandLineArgumentHelper()
+    (options, arguments) = c.getopt(sys.argv[1:])
     
-    for (option, value) in options:
-        if option in ("-r","--reader"):
-            reader = value
-        if option in ("-l","--list-readers"):
-            list_readers()
-            exit_now = True
-
-    if exit_now:
-        sys.exit()
-    del exit_now
-
-    pycsc_card = connect(reader)
+    pycsc_card = c.connect()
     card = cards.new_card_object(pycsc_card)
     cards.generic_card.DEBUG = False
     

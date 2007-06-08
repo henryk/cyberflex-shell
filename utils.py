@@ -8,7 +8,88 @@ except ImportError,e:
     except ImportError:
         raise e # raise the original exception, masking the windows-only attempt
 
-import string, binascii, sys, re
+import string, binascii, sys, re, getopt
+
+class CommandLineArgumentHelper:
+    OPTIONS = "r:l"
+    LONG_OPTIONS = ["reader=", "list-readers"]
+    exit_now = False
+    reader = None
+    
+    def list_readers():
+        for index, name in enumerate(pycsc.listReader()):
+            print "%i: %s" % (index, name)
+    list_readers = staticmethod(list_readers)
+    
+    def connect(self):
+        "Open the connection to a card"
+        
+        if self.reader is None:
+            self.reader = 0
+        
+        if isinstance(self.reader, int) or self.reader.isdigit():
+            self.reader = int(self.reader)
+            readerName = pycsc.listReader()[self.reader]
+        else:
+            readerName = self.reader
+        
+        newState = pycsc.getStatusChange(ReaderStates=[
+                {'Reader': readerName, 'CurrentState':pycsc.SCARD_STATE_UNAWARE}
+            ]
+        )
+        
+        print "Using reader: %s" % readerName
+        print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
+        
+        if not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT:
+            print "Please insert card ..."
+            
+            last_was_mute = False
+            
+            while not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT \
+                or newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
+                
+                try:
+                    newState = pycsc.getStatusChange(ReaderStates=[
+                            {'Reader': readerName, 'CurrentState':newState[0]['EventState']}
+                        ], Timeout = 100 
+                    ) ## 100 ms latency from Ctrl-C to abort should be almost unnoticeable by the user
+                except pycsc.PycscException, e:
+                    if e.args[0] == 'Command timeout.': pass ## ugly
+                    else: raise
+                
+                if newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
+                    if not last_was_mute:
+                        print "Card is mute, please retry ..."
+                    last_was_mute = True
+                else: 
+                    last_was_mute = False
+                
+            print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
+        
+        print "ATR:          %s" % hexdump(newState[0]['Atr'], short = True)
+        return pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
+    
+    def getopt(self, argv, opts="", long_opts=[]):
+        "Wrapper around getopt.gnu_getopt. Handles common arguments, returns everything else."
+        (options, arguments) = getopt.gnu_getopt(sys.argv[1:], self.OPTIONS+opts, self.LONG_OPTIONS+long_opts)
+        
+        unrecognized = []
+        
+        for (option, value) in options:
+            if option in ("-r","--reader"):
+                self.reader = value
+            elif option in ("-l","--list-readers"):
+                self.list_readers()
+                self.exit_now = True
+            else:
+                unrecognized.append( (option, value) )
+        
+        if self.exit_now:
+            sys.exit()
+        
+        return unrecognized, arguments
+
 
 def represent_binary_fancy(len, value, mask = 0):
     result = []

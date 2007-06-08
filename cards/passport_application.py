@@ -3,7 +3,8 @@ import struct, sha, binascii, os, datetime, sys
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
 from generic_card import Card
-import crypto_utils, tcos_card, TLV_utils
+from iso_7816_4_card import ISO_7816_4_Card
+import crypto_utils, tcos_card, TLV_utils, generic_card
 from TLV_utils import identifier
 
 identifier("context_mrtd")
@@ -88,7 +89,11 @@ class Passport_Application(Application):
     STATUS_MAP = {
         Card.PURPOSE_SM_OK: ("6282", "6982", "6A82")
     }
-
+    
+    INTERESTING_FILES = [
+        ("COM", "\x01\x1e",),
+        ("SOD", "\x01\x1d",),
+    ] + [ ("DG%s" % e, "\x01"+chr(e)) for e in range(1,19) ]
     
     def __init__(self, *args, **kwargs):
         self.ssc = None
@@ -115,7 +120,8 @@ class Passport_Application(Application):
         MRZ_information = mrz2[0:10] + mrz2[13:20] + mrz2[21:28]
         H = sha.sha(MRZ_information).digest()
         Kseed = H[:16]
-        print "SHA1('%s')[:16] =\nKseed   = %s" % (MRZ_information, hexdump(Kseed))
+        if verbose:
+            print "SHA1('%s')[:16] =\nKseed   = %s" % (MRZ_information, hexdump(Kseed))
         return Kseed
     derive_seed = staticmethod(derive_seed)
     
@@ -240,21 +246,34 @@ class Passport_Application(Application):
         for index, biometric in enumerate(cbeff.biometrics):
             biometric.store(basename= "biometric_%s_%02i" % (basename, index))
     
-    def _read_ef(self, fid):
+    def cmd_parse_passport(self, mrz2=None):
+        "Test the Passport class"
+        if mrz2 is None:
+            p = Passport.from_card(self)
+        else:
+            p = Passport.from_card(self, ["",mrz2])
+    
+    def _read_ef(self, name):
+        fid = None
+        for n, f in self.INTERESTING_FILES:
+            if n == name: break
+        if fid is None:
+            return
+        
         result = self.open_file(fid, 0x0c)
-        if not result.sw == "\x6a\x82":
+        if self.check_sw(result.sw):
             self.cmd_cat()
             self.cmd_parsetlv()
     
     def cmd_read_com(self):
         "Read EF.COM"
-        return self._read_ef("\x01\x1e")
+        return self._read_ef("COM")
     def cmd_read_sod(self):
         "Read EF.SOD"
-        return self._read_ef("\x01\x1d")
+        return self._read_ef("SOD")
     def cmd_read_dg(self, dg):
         "Read EF.DGx"
-        return self._read_ef("\x01"+chr(int(dg,0)))
+        return self._read_ef("DG%s" % int(dg,0))
     
     COMMANDS = {
         "perform_bac": cmd_perform_bac,
@@ -262,6 +281,7 @@ class Passport_Application(Application):
         "read_sod": cmd_read_sod,
         "read_dg": cmd_read_dg,
         "parse_biometrics": cmd_parse_biometrics,
+        "parse_passport": cmd_parse_passport,
     }
     
     DATA_GROUPS = {
@@ -745,23 +765,25 @@ class Passport(object):
         
         # Other
         "UTO": ("Utopia", ""),
+        "BDR": ("Bundesdruckerei", ""),
     }    
-    def __init__(self, mrz_data = _default_empty_mrz_data):
+    def __init__(self, mrz_data = _default_empty_mrz_data, ignore_mrz_parse_error = False):
         """Initialize an instance. 
         Optional argument mrz_data must be a sequence of strings representing the individual lines (at least 
         two) from the machine readable zone."""
         self.given_mrz = mrz_data
+        self.dg1_mrz = self.dg2_cbeff = None
+        self.parse_failed = False
+        self.parse_error = ""
+        self.card = None
+        
         try:
             if mrz_data is not _default_empty_mrz_data:
                 self._parse_mrz(mrz_data)
         except PassportParseError:
-            self.parse_failed = True
-            self.parse_error = sys.exc_info()[1]
-        else:
-            self.parse_failed = False
-            self.parse_error = ""
-        
-        print self.parse_error
+            if not ignore_mrz_parse_error:
+                self.parse_failed = True
+                self.parse_error = sys.exc_info()[1]
     
     def from_card(cls, card, mrz_data = _default_empty_mrz_data):
         """Initialize an instance and populate it from a card.
@@ -769,6 +791,46 @@ class Passport(object):
         (to which a select_application() call will be issued). This card object will then be used to fetch
         all data before returning from the constructor. Note that for a BAC protected passport you will need
         to specify at least the second element in mrz_data."""
+        
+        if not isinstance(card, Passport_Application):
+            if not isinstance(card, ISO_7816_4_Card):
+                raise ValueError, "card must be a Passport_Application object or a ISO_7816_4_Card object, not %s" % type(card)
+            else:
+                result = card.select_application("mrtd")
+                if not card.check_sw(result.sw):
+                    raise EnvironmentError, "card did not accept SELECT APPLICATION, sw was %s" % result.sw
+                assert isinstance(card, Passport_Application)
+        
+        p = cls(mrz_data, ignore_mrz_parse_error=True)
+        p.card = card
+        tried_bac = False
+        p.result_map_select = {}
+        p.result_map_read = {}
+        
+        generic_card.DEBUG = False
+        
+        for name, fid in card.INTERESTING_FILES:
+            result = card.open_file(fid, 0x0C)
+            if not card.check_sw(result.sw) and not tried_bac and not mrz_data is _default_empty_mrz_data:
+                tried_bac = True
+                card.cmd_perform_bac(mrz_data[1], verbose=0)
+                result = card.open_file(fid, 0x0C)
+            
+            p.result_map_select[fid] = result.sw
+            if card.check_sw(result.sw):
+                contents, sw = card.read_binary_file()
+                if not card.check_sw(sw) and not tried_bac and not mrz_data is _default_empty_mrz_data:
+                    tried_bac = True
+                    card.cmd_perform_bac(mrz_data[1], verbose=0)
+                    contents, sw = card.read_binary_file()
+                
+                p.result_map_read[fid] = sw
+                if contents != "":
+                    setattr(p, "contents_%s" % name, contents)
+                    if hasattr(p, "parse_%s" % name):
+                        getattr(p, "parse_%s" % name)(contents)
+        
+        return p
     from_card = classmethod(from_card)
     
     def from_file(cls, filename):
@@ -786,6 +848,19 @@ class Passport(object):
         One of basename or filemap _must_ be specified."""
     from_files = classmethod(from_files)
     
+    def parse_DG1(self, contents):
+        structure = TLV_utils.unpack(contents)
+        try:
+            mrz = TLV_utils.tlv_find_tag(structure, 0x5F1F, 1)[0][2]
+        except IndexError:
+            raise PassportParseError, "Could not find MRZ information in DG1"
+        mrz_data = (mrz[:44], mrz[44:88])
+        self.dg1_mrz = mrz_data
+        self._parse_mrz(mrz_data)
+    
+    def parse_DG2(self, contents):
+        self.dg2_cbeff = CBEFF.from_data(contents)
+    
     def calculate_check_digit(data, digit=None, field=None):
         """Calculate a check digit. If digit is not None then it will be compared to the calculated
         check digit and a PassportParseError will be raised on a mismatch. Optional argument field
@@ -795,7 +870,6 @@ class Passport(object):
             for e in data
         ]
         checksum = sum([ e * [7,3,1][i%3] for i,e in enumerate(numbers) ]) % 10
-        print "checksum(%s)=%s =?= %s" % (data, checksum, digit)
         if not digit is None and not (digit.isdigit() and checksum == int(digit)):
             raise PassportParseError, "Incorrect check digit%s. Is %s, should be %s." % ((field is not None and " in field '%s'" % field or ""), checksum, digit)
         return checksum
@@ -846,10 +920,7 @@ class Passport(object):
                         self.calculate_check_digit(splitted_opt_field[1], mrz2[-2], "Optional data")
             
             self.calculate_check_digit(mrz2[0:10]+mrz2[13:20]+mrz2[21:43], mrz2[-1], "Second line of machine readable zone")
-        
-        print self.type, self.issuer, self.name
-        print self.document_no, self.nationality, self.date_of_birth, self.sex, self.expiration_date, self.optional
-    
+
 
 if __name__ == "__main__":
     mrz1 = "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<"

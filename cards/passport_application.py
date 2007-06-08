@@ -853,8 +853,80 @@ class Passport(object):
         format is the same one that is being used by the Golden Reader Tool. Alternatively you may give
         the filemap argument which must be a mapping to filenames with the keys "COM", "SOD", "DG1", "DG2", etc.
         (Only COM, SOD and DG1 are mandatory.)
-        One of basename or filemap _must_ be specified."""
+        Exactly one of basename or filemap _must_ be specified."""
+        
+        p = cls()
+        filemap = p._make_filemap(basename, filemap, True)
+        
+        for name, _ in Passport_Application.INTERESTING_FILES:
+            if not filemap.has_key(name):
+                continue
+            
+            try:
+                data = ""
+                fp = file(filemap[name], "rb")
+                try:
+                    data = fp.read()
+                finally:
+                    fp.close()
+            except (SystemExit, KeyboardInterrupt):
+                raise
+            except IOError:
+                if sys.exc_info()[1].errno == 2:
+                    # Ignore
+                    pass
+                else:
+                    raise
+            else:
+                if data != "":
+                    setattr(p, "contents_%s" % name, data)
+                    if hasattr(p, "parse_%s" % name):
+                        getattr(p, "parse_%s" % name)(data)
+        
+        return p
     from_files = classmethod(from_files)
+    
+    def to_files(self, basename = None, filemap = None):
+        """Save an instance to a number of files.
+        The format is the same one that is being used by the Golden Reader Tool. Alternatively you may give
+        the filemap argument which must be a mapping to filenames with the keys "COM", "SOD", "DG1", "DG2", etc.
+        (All data files in memory are mandatory.)
+        Exactly one of basename or filemap _must_ be specified."""
+        
+        filemap = self._make_filemap(basename, filemap, False)
+        
+        for name, _ in Passport_Application.INTERESTING_FILES:
+            if not hasattr(self, "contents_%s" % name):
+                continue
+            
+            try:
+                fp = file(filemap[name], "wb")
+                try:
+                   fp.write( getattr(self, "contents_%s" % name) )
+                finally:
+                    fp.close()
+            except (SystemExit, KeyboardInterrupt):
+                raise
+    
+    def _make_filemap(self, basename, filemap, assert_existing=False):
+        "Internal function for code shared between from_files and to_files"
+        if filemap is None and basename is None:
+            raise TypeError, "Either basename or filemap must be specified, both cannot be empty."
+        if filemap is not None and basename is not None:
+            raise TypeError, "Either basename or filemap must be specified, both cannot be set."
+        
+        if filemap is None:
+            filemap = {}
+            for name, _ in Passport_Application.INTERESTING_FILES:
+                filemap[name] = "%s%s.bin" % (basename, name)
+                if assert_existing and not os.path.exists(filemap[name]):
+                    del filemap[name]
+        
+        if not sum([not filemap.has_key(e) for e in "COM", "SOD", "DG1"]) == 0:
+            raise KeyError, "In order to read a file set from disk, COM, SOD and DG1 must exist"
+        
+        return filemap
+    
     
     def parse_DG1(self, contents):
         structure = TLV_utils.unpack(contents)

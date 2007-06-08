@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2007-06-08, 02:40:24 -->
+<!-- Saved: 2007-06-08, 03:16:36 -->
 <!-- Copyright (C) 2007 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -104,6 +104,10 @@
     </Source>
     <Source>
       <Name>readpass.py</Name>
+    </Source>
+    <Source>
+      <Dir>gui</Dir>
+      <Name>__init__.py</Name>
     </Source>
   </Sources>
   <Forms>

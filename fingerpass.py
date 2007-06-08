@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import pycsc, utils, cards, TLV_utils, sys, binascii, time, getopt, traceback, re
+from utils import pycsc
+import utils, cards, TLV_utils, sys, binascii, time, getopt, traceback, re
 
 STATUS_INTERVAL = 10
 

@@ -1,15 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-try:
-    import pycsc
-except ImportError,e:
-    try:
-        import PyCSC
-        from PyCSC import pycsc # Windows
-        pycsc.SCARD_PROTOCOL_ANY = PyCSC.SCARD_PROTOCOL_ANY
-    except ImportError:
-        raise e # raise the original exception, masking the windows-only attempt
+from utils import pycsc
 
 import crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt, datetime
 from shell import Shell

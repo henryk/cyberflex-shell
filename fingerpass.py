@@ -4,8 +4,6 @@
 from utils import pycsc
 import utils, cards, TLV_utils, sys, binascii, time, traceback, re
 
-STATUS_INTERVAL = 10
-
 def fingerprint_rfid(card):
     # Need RFID
     if not isinstance(card, cards.rfid_card.RFID_Card):

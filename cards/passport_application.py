@@ -133,10 +133,11 @@ class Passport_Application(Application):
         if verbose:
             print "Kenc    = %s" % hexdump(Kenc)
             print "Kmac    = %s" % hexdump(Kmac)
-        
-        print
+            
+            print
         result = self.send_apdu(self.APDU_GET_RANDOM)
-        assert self.check_sw(result.sw)
+        if not self.check_sw(result.sw):
+            raise BACError, "SW after GET RANDOM was %02x%02x. Card refused to send rcd_icc. Should NEVER happen." % (result.sw1, result.sw2)
         
         rnd_icc = result.data
         if verbose:
@@ -155,11 +156,12 @@ class Passport_Application(Application):
         if verbose:
             print "Eifd    = %s" % hexdump(Eifd, indent=10)
             print "Mifd    = %s" % hexdump(Mifd)
-        
-        print
+            
+            print
         auth_apdu = C_APDU(self.APDU_MUTUAL_AUTHENTICATE, data = Eifd + Mifd)
         result = self.send_apdu(auth_apdu)
-        assert self.check_sw(result.sw)
+        if not self.check_sw(result.sw):
+            raise BACError, "SW after MUTUAL AUTHENTICATE was %02x%02x. Card did not accept our BAC attempt" % (result.sw1, result.sw2)
         
         resp_data = result.data
         Eicc = resp_data[:-8]
@@ -176,9 +178,9 @@ class Passport_Application(Application):
         if verbose:
             print "R       = %s" % hexdump(R, indent=10)
         if not R[:8] == rnd_icc:
-            raise ValueError, "Passport authentication failed: Wrong RND.icc on incoming data during Mutual Authenticate"
+            raise BACError, "Passport authentication failed: Wrong RND.icc on incoming data during Mutual Authenticate"
         if not R[8:16] == rnd_ifd:
-            raise ValueError, "Passport authentication failed: Wrong RND.ifd on incoming data during Mutual Authenticate"
+            raise BACError, "Passport authentication failed: Wrong RND.ifd on incoming data during Mutual Authenticate"
         Kicc = R[16:]
         
         if verbose:
@@ -513,6 +515,8 @@ class CBEFF:
 
 class PassportParseError(Exception):
     pass
+class BACError(Exception):
+    pass
 
 _default_empty_mrz_data = ("","")
 class Passport(object):
@@ -796,9 +800,9 @@ class Passport(object):
             if not isinstance(card, ISO_7816_4_Card):
                 raise ValueError, "card must be a Passport_Application object or a ISO_7816_4_Card object, not %s" % type(card)
             else:
-                result = card.select_application("mrtd")
+                result = card.select_application(card.resolve_symbolic_aid("mrtd"))
                 if not card.check_sw(result.sw):
-                    raise EnvironmentError, "card did not accept SELECT APPLICATION, sw was %s" % result.sw
+                    raise EnvironmentError, "card did not accept SELECT APPLICATION, sw was %02x %02x" % (result.sw1, result.sw2)
                 assert isinstance(card, Passport_Application)
         
         p = cls(mrz_data, ignore_mrz_parse_error=True)
@@ -806,8 +810,6 @@ class Passport(object):
         tried_bac = False
         p.result_map_select = {}
         p.result_map_read = {}
-        
-        generic_card.DEBUG = False
         
         for name, fid in card.INTERESTING_FILES:
             result = card.open_file(fid, 0x0C)
@@ -880,46 +882,53 @@ class Passport(object):
         self.document_no, self.nationality, self.date_of_birth, self.sex, self.expiration_date, self.optional = "", "", "", "", "", ""
         
         if mrz_data[0].strip() != "":
-            mrz1 = mrz_data[0].replace("<", " ")
-            self.type = mrz1[0:2].strip()
-            self.issuer = mrz1[2:5].strip()
-            n = mrz1[5:].strip().split("  ", 1)
-            self.name = [n[0]]
-            self.name = self.name + n[1].split(" ")
+            try:
+                mrz1 = mrz_data[0].replace("<", " ")
+                self.type = mrz1[0:2].strip()
+                self.issuer = mrz1[2:5].strip()
+                n = mrz1[5:].strip().split("  ", 1)
+                self.name = [n[0]]
+                self.name = self.name + n[1].split(" ")
+            except IndexError:
+                raise PassportParseError, "Some index error while parsing mrz1"
+            
         if mrz_data[1].strip() != "":
-            mrz2 = mrz_data[1]
-            self.document_no = mrz2[:9].strip("<")
-            if mrz2[9] == "<": # document number check digit, or filler character to indicate document number longer than 9 characters
-                expanded_document_no = True
-            else:
-                expanded_document_no = False
-                self.calculate_check_digit(mrz2[:9], mrz2[9], "Document number")
-            self.nationality = mrz2[10:13].strip("<")
-            
-            self.date_of_birth = mrz2[13:19]
-            self.calculate_check_digit(mrz2[13:19], mrz2[19], "Date of birth")
-            
-            self.sex = mrz2[20]
-            
-            self.expiration_date = mrz2[21:27]
-            self.calculate_check_digit(mrz2[21:27], mrz2[27], "Date of expiration")
-            
-            opt_field = mrz2[28:-2]
-            if not expanded_document_no:
-                self.optional = opt_field.strip("<")
-                if mrz2[-2] != "<":
-                    self.calculate_check_digit(opt_field, mrz2[-2], "Optional data")
-            else:
-                splitted_opt_field = opt_field.split("<", 1)
-                self.document_no = self.document_no + splitted_opt_field[0][:-1]
-                self.calculate_check_digit(self.document_no, splitted_opt_field[0][-1], "Expanded document number")
+            try:
+                mrz2 = mrz_data[1]
+                self.document_no = mrz2[:9].strip("<")
+                if mrz2[9] == "<": # document number check digit, or filler character to indicate document number longer than 9 characters
+                    expanded_document_no = True
+                else:
+                    expanded_document_no = False
+                    self.calculate_check_digit(mrz2[:9], mrz2[9], "Document number")
+                self.nationality = mrz2[10:13].strip("<")
                 
-                if len(splitted_opt_field) > 1:
-                    self.optional = splitted_opt_field[1].strip("<")
+                self.date_of_birth = mrz2[13:19]
+                self.calculate_check_digit(mrz2[13:19], mrz2[19], "Date of birth")
+                
+                self.sex = mrz2[20]
+                
+                self.expiration_date = mrz2[21:27]
+                self.calculate_check_digit(mrz2[21:27], mrz2[27], "Date of expiration")
+                
+                opt_field = mrz2[28:-2]
+                if not expanded_document_no:
+                    self.optional = opt_field.strip("<")
                     if mrz2[-2] != "<":
-                        self.calculate_check_digit(splitted_opt_field[1], mrz2[-2], "Optional data")
-            
-            self.calculate_check_digit(mrz2[0:10]+mrz2[13:20]+mrz2[21:43], mrz2[-1], "Second line of machine readable zone")
+                        self.calculate_check_digit(opt_field, mrz2[-2], "Optional data")
+                else:
+                    splitted_opt_field = opt_field.split("<", 1)
+                    self.document_no = self.document_no + splitted_opt_field[0][:-1]
+                    self.calculate_check_digit(self.document_no, splitted_opt_field[0][-1], "Expanded document number")
+                    
+                    if len(splitted_opt_field) > 1:
+                        self.optional = splitted_opt_field[1].strip("<")
+                        if mrz2[-2] != "<":
+                            self.calculate_check_digit(splitted_opt_field[1], mrz2[-2], "Optional data")
+                
+                self.calculate_check_digit(mrz2[0:10]+mrz2[13:20]+mrz2[21:43], mrz2[-1], "Second line of machine readable zone")
+            except:
+                raise PassportParseError, "Some index error while parsing mrz2"
 
 
 if __name__ == "__main__":

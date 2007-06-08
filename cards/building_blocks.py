@@ -122,11 +122,11 @@ class Card_with_read_binary:
         if had_one: ## If there was at least one successful pass, ignore any error SW. It probably only means "end of file"
             self.sw_changed = False
         
-        return contents
+        return contents, result.sw
     
     def cmd_cat(self):
         "Print a hexdump of the currently selected file (e.g. consecutive READ BINARY)"
-        contents = self.read_binary_file()
+        contents, sw = self.read_binary_file()
         self.last_result = R_APDU(contents + self.last_sw)
         print utils.hexdump(contents,linelen=self.HEXDUMP_LINELEN)
     

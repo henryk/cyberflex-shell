@@ -466,7 +466,7 @@ class FAC:
         for index, face in enumerate(self.faces):
             face.store(basename="%s_%02i" % (basename, index))
     
-    def get_data(self):
+    def get_images(self):
         return [face.get_data() for face in self.faces]
     
 # Note: Probably all of the code in this class is wrong. I'm just guessing from examples and parts of specifications I didn't fully read --Henryk
@@ -944,6 +944,12 @@ class Passport(object):
     
     def parse_DG2(self, contents):
         self.dg2_cbeff = CBEFF.from_data(contents)
+    
+    def parse_DG5(self, contents):
+        self.dg5_tlv = TLV_utils.unpack(contents)
+    
+    def parse_DG7(self, contents):
+        self.dg7_tlv = TLV_utils.unpack(contents)
     
     def calculate_check_digit(data, digit=None, field=None):
         """Calculate a check digit. If digit is not None then it will be compared to the calculated

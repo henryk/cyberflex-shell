@@ -1,5 +1,5 @@
 import gtk,gtk.glade,gobject
-import os, time
+import os, time, TLV_utils
 
 class Converter:
     SUPPORTS = ["jp2"]
@@ -31,6 +31,8 @@ class PassportGUI:
             "on_exit_clicked": self.exit_clicked,
             "on_main_delete_event": self.exit_clicked,
             "on_main_destroy": gtk.main_quit,
+            "on_next_image_clicked": self.next_image,
+            "on_prev_image_clicked": self.prev_image,
         }
         self.main_window_xml.signal_autoconnect(signals)
     
@@ -102,7 +104,15 @@ class PassportGUI:
         data = []
         if hasattr(passport, "dg2_cbeff") and passport.dg2_cbeff is not None:
             for biometric in passport.dg2_cbeff.biometrics:
-                data = data + [(a,b,"Encoded Face") for (a,b) in biometric.get_data()]
+                data = data + [(a,b,"Encoded Face") for (a,b) in biometric.get_images()]
+        
+        for dg, tag, type in ( ("dg5", 0x5F40, "Displayed Portrait"), ("dg7", 0x5F43, "Displayed Signature or Usual Mark") ):
+            if hasattr(passport, "%s_tlv" % dg):
+                structure = getattr(passport, "%s_tlv" % dg)
+                if structure is not None:
+                    hits = TLV_utils.tlv_find_tag(structure, tag)
+                    for t,l,v in hits:
+                        data.append( ("jpg",v,type) )
         
         self._set_images(data)
     
@@ -121,14 +131,17 @@ class PassportGUI:
         
         self.update_image_shown()
     
-    def update_image_shown(self):
+    def update_image_shown(self, add=0):
+        self.now_showing = self.now_showing + add
+        
         if self.now_showing >= len(self.images):
             self.now_showing = len(self.images)-1
+        if self.now_showing < 0:
+            self.now_showing = 0
         
         if len(self.images) > 0:
             pixbuf, description = self.images[self.now_showing]
         else:
-            self.now_showing = 0
             pixbuf, description = None, "No image loaded"
         
         label = self.main_window_xml.get_widget("image_label")
@@ -142,3 +155,12 @@ class PassportGUI:
         
         if pixbuf is not None:
             self.main_window_xml.get_widget("image").set_from_pixbuf(pixbuf)
+        
+        self.main_window_xml.get_widget("prev_image").set_property("sensitive", self.now_showing > 0)
+        self.main_window_xml.get_widget("next_image").set_property("sensitive", self.now_showing < len(self.images)-1)
+    
+    def next_image(self, widget):
+        self.update_image_shown(+1)
+    
+    def prev_image(self, widget):
+        self.update_image_shown(-1)

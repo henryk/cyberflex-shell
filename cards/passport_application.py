@@ -934,7 +934,8 @@ class Passport(object):
             mrz = TLV_utils.tlv_find_tag(structure, 0x5F1F, 1)[0][2]
         except IndexError:
             raise PassportParseError, "Could not find MRZ information in DG1"
-        mrz_data = (mrz[:44], mrz[44:88])
+        # Length of an MRZ line is either 30+5 or 31+5 or 39+5, depending on document type. (LDS technical report 2004, section 16.1)
+        mrz_data = (mrz[:len(mrz)/2], mrz[len(mrz)/2:])
         self.dg1_mrz = mrz_data
         self._parse_mrz(mrz_data)
     
@@ -951,7 +952,7 @@ class Passport(object):
         ]
         checksum = sum([ e * [7,3,1][i%3] for i,e in enumerate(numbers) ]) % 10
         if not digit is None and not (digit.isdigit() and checksum == int(digit)):
-            raise PassportParseError, "Incorrect check digit%s. Is %s, should be %s." % ((field is not None and " in field '%s'" % field or ""), checksum, digit)
+            raise PassportParseError, "Incorrect check digit%s. Calculated: %s, read/entered: %s." % ((field is not None and " in field '%s'" % field or ""), checksum, digit)
         return checksum
     calculate_check_digit = staticmethod(calculate_check_digit)
     
@@ -964,9 +965,11 @@ class Passport(object):
                 mrz1 = mrz_data[0].replace("<", " ")
                 self.type = mrz1[0:2].strip()
                 self.issuer = mrz1[2:5].strip()
+                # Length of name field is variable, with max. 39 chars (LDS technical report 2004, section 16.1)
                 n = mrz1[5:].strip().split("  ", 1)
                 self.name = [n[0]]
-                self.name = self.name + n[1].split(" ")
+                if len(n) > 1:
+                    self.name = self.name + n[1].split(" ")
             except IndexError:
                 raise PassportParseError, "Some index error while parsing mrz1"
             
@@ -989,6 +992,7 @@ class Passport(object):
                 self.expiration_date = mrz2[21:27]
                 self.calculate_check_digit(mrz2[21:27], mrz2[27], "Date of expiration")
                 
+                # Length of optional data is variable (LDS technical report 2004, section 16.1)
                 opt_field = mrz2[28:-2]
                 if not expanded_document_no:
                     self.optional = opt_field.strip("<")
@@ -1005,8 +1009,12 @@ class Passport(object):
                             self.calculate_check_digit(splitted_opt_field[1], mrz2[-2], "Optional data")
                 
                 self.calculate_check_digit(mrz2[0:10]+mrz2[13:20]+mrz2[21:43], mrz2[-1], "Second line of machine readable zone")
-            except:
+            except IndexError:
                 raise PassportParseError, "Some index error while parsing mrz2"
+        
+##        print self.type, self.issuer, self.name
+##        print self.document_no, self.nationality, self.date_of_birth, self.sex, self.expiration_date, self.optional
+##        print
 
 
 if __name__ == "__main__":

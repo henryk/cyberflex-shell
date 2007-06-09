@@ -145,9 +145,34 @@ def parse_oid(value):
     
     return tuple(result)
     
+oidCache = {}
+def loadOids(filename="oids.txt"):
+    try:
+        fp = file(filename, "r")
+    except (SystemExit,KeyboardInterrupt):
+        raise
+    except:
+        pass
+    else:
+        try:
+            lines = fp.readlines()
+        finally:
+            fp.close()
+        for line in lines:
+            if line.strip() == "" or line[0] == "#":
+                continue
+            parts = line.strip().split(None,2)
+            if len(parts) < 3:
+                parts.append(parts[1])
+            oidCache[parts[0]] = tuple(parts[1:])
+    
 def decode_oid(value):
     oid = parse_oid(value)
-    return " " + ".".join([str(a) for a in oid])
+    str_rep = ".".join([str(a) for a in oid])
+    
+    if len(oidCache) == 0:
+        loadOids()
+    return " %s (%s)" % (str_rep, oidCache.get(str_rep, ("No description available",))[0])
 
 _gtimere = sre.compile(r'(\d{4})(\d\d)(\d\d)(\d\d)(?:(\d\d)(\d\d(?:[.,]\d+)?)?)?(|Z|(?:[+-]\d\d(?:\d\d)?))$')
 def decode_generalized_time(value):
@@ -484,3 +509,5 @@ if __name__ == "__main__":
     c = pack(b, recalculate_length = True)
     print utils.hexdump(a)
     print utils.hexdump(c)
+    
+    loadOids()

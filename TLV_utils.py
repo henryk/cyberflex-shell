@@ -1,4 +1,4 @@
-import binascii, utils, sre, sys
+import binascii, utils, re, sys
 
 class identifier:
     """An identifier, because I'm too lazy to use quotes all over the place.
@@ -174,7 +174,7 @@ def decode_oid(value):
         loadOids()
     return " %s (%s)" % (str_rep, oidCache.get(str_rep, ("No description available",))[0])
 
-_gtimere = sre.compile(r'(\d{4})(\d\d)(\d\d)(\d\d)(?:(\d\d)(\d\d(?:[.,]\d+)?)?)?(|Z|(?:[+-]\d\d(?:\d\d)?))$')
+_gtimere = re.compile(r'(\d{4})(\d\d)(\d\d)(\d\d)(?:(\d\d)(\d\d(?:[.,]\d+)?)?)?(|Z|(?:[+-]\d\d(?:\d\d)?))$')
 def decode_generalized_time(value):
     matches = _gtimere.match(value)
     if not matches:
@@ -201,7 +201,7 @@ def decode_generalized_time(value):
         
         return "".join(result)
 
-_utimere = sre.compile(r'(\d\d)(\d\d)(\d\d)(\d\d)(?:(\d\d))?(Z|(?:[+-]\d\d(?:\d\d)?))$')
+_utimere = re.compile(r'(\d\d)(\d\d)(\d\d)(\d\d)(?:(\d\d))?(Z|(?:[+-]\d\d(?:\d\d)?))$')
 def decode_utc_time(value):
     matches = _utimere.match(value)
     if not matches:

@@ -1,5 +1,5 @@
 from utils import pycsc
-import TLV_utils, crypto_utils, utils, binascii, fnmatch, sre
+import TLV_utils, crypto_utils, utils, binascii, fnmatch, re
 from utils import C_APDU, R_APDU
 
 DEBUG = True
@@ -254,7 +254,7 @@ class Card:
         def match_list(atr, list):
             for (knownatr, mask) in list:
                 if mask is None:
-                    if sre.match(knownatr, binascii.hexlify(atr), sre.I):
+                    if re.match(knownatr, binascii.hexlify(atr), re.I):
                         return True
                 else:
                     if len(knownatr) != len(atr):

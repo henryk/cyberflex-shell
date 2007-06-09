@@ -19,6 +19,8 @@
   <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
   <property name="focus_on_map">True</property>
   <property name="urgency_hint">False</property>
+  <signal name="destroy" handler="on_main_destroy" last_modification_time="Sat, 09 Jun 2007 00:37:48 GMT"/>
+  <signal name="delete_event" handler="on_main_delete_event" last_modification_time="Sat, 09 Jun 2007 00:41:46 GMT"/>
 
   <child>
     <widget class="GtkTable" id="passport_data_page">
@@ -910,6 +912,50 @@ Nationality</property>
 	  <property name="top_attach">8</property>
 	  <property name="bottom_attach">9</property>
 	  <property name="y_options"></property>
+	</packing>
+      </child>
+
+      <child>
+	<widget class="GtkHBox" id="hbox1">
+	  <property name="visible">True</property>
+	  <property name="homogeneous">False</property>
+	  <property name="spacing">0</property>
+
+	  <child>
+	    <placeholder/>
+	  </child>
+
+	  <child>
+	    <placeholder/>
+	  </child>
+
+	  <child>
+	    <widget class="GtkButton" id="exit">
+	      <property name="visible">True</property>
+	      <property name="can_default">True</property>
+	      <property name="has_default">True</property>
+	      <property name="can_focus">True</property>
+	      <property name="has_focus">True</property>
+	      <property name="label">gtk-quit</property>
+	      <property name="use_stock">True</property>
+	      <property name="relief">GTK_RELIEF_NORMAL</property>
+	      <property name="focus_on_click">True</property>
+	      <signal name="clicked" handler="on_exit_clicked" last_modification_time="Sat, 09 Jun 2007 00:36:17 GMT"/>
+	    </widget>
+	    <packing>
+	      <property name="padding">0</property>
+	      <property name="expand">False</property>
+	      <property name="fill">False</property>
+	      <property name="pack_type">GTK_PACK_END</property>
+	    </packing>
+	  </child>
+	</widget>
+	<packing>
+	  <property name="left_attach">0</property>
+	  <property name="right_attach">6</property>
+	  <property name="top_attach">18</property>
+	  <property name="bottom_attach">19</property>
+	  <property name="x_options">fill</property>
 	</packing>
       </child>
     </widget>

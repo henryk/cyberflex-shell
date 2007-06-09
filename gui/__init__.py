@@ -26,6 +26,17 @@ class PassportGUI:
         self.now_showing = 0
         self.main_window_xml = gtk.glade.XML(self.GLADE_FILE, "main")
         self.main_window = self.main_window_xml.get_widget("main")
+        
+        signals = {
+            "on_exit_clicked": self.exit_clicked,
+            "on_main_delete_event": self.exit_clicked,
+            "on_main_destroy": gtk.main_quit,
+        }
+        self.main_window_xml.signal_autoconnect(signals)
+    
+    def exit_clicked(self, widget, event=None, data=None):
+        gtk.main_quit()
+        return True
     
     def run(self):
         gtk.gdk.threads_init()

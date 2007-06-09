@@ -1,15 +1,17 @@
 import gtk,gtk.glade,gobject
-import os
+import os, time
 
 class Converter:
     SUPPORTS = ["jp2"]
     
     def convert(type, image_data):
-        stdin, stdout = os.popen2("convert %s:- png:-" % type)
+        stdin, stdout = os.popen2("convert %s:- bmp:-" % type)
+        n = time.time()
         stdin.write(image_data)
         stdin.close()
         return_data = stdout.read()
         stdout.close()
+        #print "Took", time.time()-n, "seconds for conversion"
         return return_data
     convert = staticmethod(convert)
 

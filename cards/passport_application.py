@@ -258,7 +258,9 @@ class Passport_Application(Application):
     def _read_ef(self, name):
         fid = None
         for n, f in self.INTERESTING_FILES:
-            if n == name: break
+            if n == name: 
+                fid = f
+                break
         if fid is None:
             return
         
@@ -327,10 +329,11 @@ class Passport_Application(Application):
         result = []
         for t in value:
             e = Passport_Application.DATA_GROUPS.get(ord(t))
+            hex = "0x%02x: " %ord(t)
             if e is None:
-                result.append("Error: '%02X' is an unknown Data Group tag" % ord(t))
+                result.append(hex+"Error: '%02X' is an unknown Data Group tag" % ord(t))
             else:
-                result.append("DG%-2i - %s" % e)
+                result.append(hex+"DG%-2i - %s" % e)
         return "\n" + "\n".join(result)
     
     TLV_OBJECTS[context_EFcom] = {

@@ -172,7 +172,18 @@ def decode_oid(value):
     
     if len(oidCache) == 0:
         loadOids()
-    return " %s (%s)" % (str_rep, oidCache.get(str_rep, ("No description available",))[0])
+    description = oidCache.get(str_rep, None)
+    if description is None:
+        steps = [oid[:e] for e in range(len(oid)-1, 0, -1)]
+        for step in steps:
+            new_str_rep = ".".join([str(a) for a in step])
+            if oidCache.has_key(new_str_rep):
+                description = ("%s %s" % (oidCache[new_str_rep][0], ".".join([str(a) for a in oid[len(step):]])),)
+                break
+        if description is None:
+            description = ("No description available",)
+
+    return " %s (%s)" % (str_rep, description[0])
 
 _gtimere = re.compile(r'(\d{4})(\d\d)(\d\d)(\d\d)(?:(\d\d)(\d\d(?:[.,]\d+)?)?)?(|Z|(?:[+-]\d\d(?:\d\d)?))$')
 def decode_generalized_time(value):
@@ -511,3 +522,4 @@ if __name__ == "__main__":
     print utils.hexdump(c)
     
     loadOids()
+

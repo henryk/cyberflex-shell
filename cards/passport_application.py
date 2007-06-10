@@ -93,7 +93,9 @@ class Passport_Application(Application):
     INTERESTING_FILES = [
         ("COM", "\x01\x1e",),
         ("SOD", "\x01\x1d",),
-    ] + [ ("DG%s" % e, "\x01"+chr(e)) for e in range(1,19) ]
+    ] + [ ("DG%s" % e, "\x01"+chr(e)) for e in range(1,19) ] + [
+        ("CVCA", "\x01\x1c",),
+    ]
     
     def __init__(self, *args, **kwargs):
         self.ssc = None
@@ -275,6 +277,9 @@ class Passport_Application(Application):
     def cmd_read_sod(self):
         "Read EF.SOD"
         return self._read_ef("SOD")
+    def cmd_read_cvca(self):
+        "Read EF.CVCA"
+        return self._read_ef("CVCA")
     def cmd_read_dg(self, dg):
         "Read EF.DGx"
         return self._read_ef("DG%s" % int(dg,0))
@@ -283,6 +288,7 @@ class Passport_Application(Application):
         "perform_bac": cmd_perform_bac,
         "read_com": cmd_read_com,
         "read_sod": cmd_read_sod,
+        "read_cvca": cmd_read_cvca,
         "read_dg": cmd_read_dg,
         "parse_biometrics": cmd_parse_biometrics,
         "parse_passport": cmd_parse_passport,

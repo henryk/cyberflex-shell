@@ -24,3 +24,6 @@
 
 # From tr-03110-eac-1.0.pdf
 0.4.0.127.0.7 bsi-de Base OID for BSI, Germany
+0.4.0.127.0.7.2.2.1 id-CA Chip Authentication object identifiers
+0.4.0.127.0.7.2.2.1.1 id-CA-DH DH Algorithm suite for Chip Authentication
+0.4.0.127.0.7.2.2.1.2 id-CA-ECDH ECDH Algorithm suite for Chip Authentication

@@ -16,6 +16,7 @@
 
 0:006404150102009000ee,P:6700,1,569AAA9A
     Electronic Passport Specimen, issued by Bundesdruckerei, Germany
+# ATS: 0e 78 33 c4 02 00 64 04 15 01 02 00 90 00
 
 0:[^,]*,P:6700,1,5AAAAAAA,08
     German Passport

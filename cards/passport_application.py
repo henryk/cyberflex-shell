@@ -129,6 +129,7 @@ class Passport_Application(Application):
     
     def cmd_perform_bac(self, mrz2, verbose=1):
         "Perform the Basic Acess Control authentication and establishment of session keys"
+        mrz2 = mrz2.upper()
         Kseed = self.derive_seed(mrz2, verbose)
         Kenc = self.derive_key(Kseed, 1)
         Kmac = self.derive_key(Kseed, 2)

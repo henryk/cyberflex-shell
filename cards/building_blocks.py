@@ -107,12 +107,18 @@ class Card_with_read_binary:
         contents = ""
         had_one = False
         
+        self.last_size = -1
         while True:
             command = C_APDU(self.APDU_READ_BINARY, p1 = offset >> 8, p2 = (offset & 0xff))
             result = self.send_apdu(command)
             if len(result.data) > 0:
                 contents = contents + result.data
                 offset = offset + (len(result.data) / self.DATA_UNIT_SIZE)
+            
+            if self.last_size == len(contents):
+                break
+            else:
+                self.last_size = len(contents)
             
             if not self.check_sw(result.sw):
                 break

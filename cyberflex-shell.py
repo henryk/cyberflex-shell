@@ -6,10 +6,6 @@ from utils import pycsc
 import crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt, datetime
 from shell import Shell
 
-def list_readers():
-    for index, name in enumerate(pycsc.listReader()):
-        print "%i: %s" % (index, name)
-
 class Logger(object):
     def __init__(self, filename, stream, prefix = "# "):
         self.fp = file(filename, "w")
@@ -346,50 +342,7 @@ class Cyberflex_Shell(Shell):
         if reader is None:
             reader = self.reader
         
-        if isinstance(reader, int) or reader.isdigit():
-            reader = int(reader)
-            readerName = pycsc.listReader()[reader]
-        else:
-            readerName = reader
-        self.reader = reader
-        
-        newState = pycsc.getStatusChange(ReaderStates=[
-                {'Reader': readerName, 'CurrentState':pycsc.SCARD_STATE_UNAWARE}
-            ]
-        )
-        
-        print "Using reader: %s" % readerName
-        print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
-        
-        if not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT:
-            print "Please insert card ..."
-            
-            last_was_mute = False
-            
-            while not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT \
-                or newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
-                
-                try:
-                    newState = pycsc.getStatusChange(ReaderStates=[
-                            {'Reader': readerName, 'CurrentState':newState[0]['EventState']}
-                        ], Timeout = 100 
-                    ) ## 100 ms latency from Ctrl-C to abort should be almost unnoticeable by the user
-                except pycsc.PycscException, e:
-                    if e.args[0] == 'Command timeout.': pass ## ugly
-                    else: raise
-                
-                if newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
-                    if not last_was_mute:
-                        print "Card is mute, please retry ..."
-                    last_was_mute = True
-                else: 
-                    last_was_mute = False
-                
-            print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
-        
-        print "ATR:          %s" % utils.hexdump(newState[0]['Atr'], short = True)
-        
-        pycsc_card = pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
+        pycsc_card = utils.CommandLineArgumentHelper.connect_to(reader)
         self.card = cards.new_card_object(pycsc_card)
         
         self.unregister_commands(self, self.NOCARD_COMMANDS)
@@ -443,8 +396,8 @@ Options:
     -h, --help               This help
 """
 
-OPTIONS = "r:lnyih"
-LONG_OPTIONS = ["reader=", "list-readers","dont-connect","dont-ask","force-interactive","help"]
+OPTIONS = "nyih"
+LONG_OPTIONS = ["dont-connect","dont-ask","force-interactive","help"]
 exit_now = False
 dont_connect = False
 dont_ask = False
@@ -453,14 +406,11 @@ reader = None
 
 if __name__ == "__main__":
     
-    (options, arguments) = getopt.gnu_getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
+    helper = utils.CommandLineArgumentHelper()
+    
+    (options, arguments) = helper.getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
     
     for (option, value) in options:
-        if option in ("-r","--reader"):
-            reader = value
-        if option in ("-l","--list-readers"):
-            list_readers()
-            exit_now = True
         if option in ("-h","--help"):
             usage()
             exit_now = True
@@ -479,7 +429,7 @@ if __name__ == "__main__":
     shell = Cyberflex_Shell("cyberflex-shell")
     
     if not dont_connect:
-        shell.cmd_connect(reader)
+        shell.cmd_connect(helper.reader)
     
     shell.run_startup()
     

@@ -27,11 +27,16 @@ class CommandLineArgumentHelper:
         if self.reader is None:
             self.reader = 0
         
-        if isinstance(self.reader, int) or self.reader.isdigit():
-            self.reader = int(self.reader)
-            readerName = pycsc.listReader()[self.reader]
+        return self.connect_to(self.reader)
+    
+    def connect_to(reader):
+        "Open the connection to a reader"
+        
+        if isinstance(reader, int) or reader.isdigit():
+            reader = int(reader)
+            readerName = pycsc.listReader()[reader]
         else:
-            readerName = self.reader
+            readerName = reader
         
         newState = pycsc.getStatusChange(ReaderStates=[
                 {'Reader': readerName, 'CurrentState':pycsc.SCARD_STATE_UNAWARE}
@@ -69,6 +74,7 @@ class CommandLineArgumentHelper:
         
         print "ATR:          %s" % hexdump(newState[0]['Atr'], short = True)
         return pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
+    connect_to = staticmethod(connect_to)
     
     def getopt(self, argv, opts="", long_opts=[]):
         "Wrapper around getopt.gnu_getopt. Handles common arguments, returns everything else."

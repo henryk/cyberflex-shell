@@ -6,11 +6,11 @@ import utils, cards, TLV_utils, sys, binascii, time, traceback, re
 def fingerprint_rfid(card):
     # Need RFID
     if not isinstance(card, cards.rfid_card.RFID_Card):
-        return [""]
+        return []
     
     uid = card.get_uid()
     
-    return "%02X" % ord(uid[0])
+    return ["%02X" % ord(uid[0])]
     # FIXME: Determine ISO type and then return a value depending on A-fixed UID vs. A-random UID vs. B
 
 def fingerprint_7816(card):
@@ -140,7 +140,7 @@ def fingerprint(card):
         catr = "F:%s" % binascii.b2a_hex(atr)
     result.append( catr )
     result.extend( fingerprint_7816(card) )
-    result.append( fingerprint_rfid(card) )
+    result.extend( fingerprint_rfid(card) )
     
     return ",".join(result)
     

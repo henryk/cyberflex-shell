@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-from utils import pycsc
 import utils, cards, TLV_utils, sys, binascii, time, traceback, re
 
 def fingerprint_rfid(card):
@@ -184,8 +183,8 @@ if __name__ == "__main__":
     c = utils.CommandLineArgumentHelper()
     (options, arguments) = c.getopt(sys.argv[1:])
     
-    pycsc_card = c.connect()
-    card = cards.new_card_object(pycsc_card)
+    card_object = c.connect()
+    card = cards.new_card_object(card_object)
     cards.generic_card.DEBUG = False
     
     print >>sys.stderr, "Using %s" % card.DRIVER_NAME

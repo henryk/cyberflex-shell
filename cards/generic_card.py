@@ -1,4 +1,4 @@
-from utils import pycsc
+import smartcard
 import TLV_utils, crypto_utils, utils, binascii, fnmatch, re
 from utils import C_APDU, R_APDU
 
@@ -122,14 +122,12 @@ class Card:
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
     
-    def __init__(self, card = None, reader = None):
-        if card is None:
-            if reader is None:
-                self.card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY)
-            else:
-                self.card = pycsc.pycsc(protocol = pycsc.SCARD_PROTOCOL_ANY, reader = reader)
-        else:
+    def __init__(self, card):
+        if not hasattr(card, "connection"):
             self.card = card
+        else:
+            self.card = card.connection
+            self.cardservice = card
         
         self._i = 0
         self.last_apdu = None
@@ -156,7 +154,8 @@ class Card:
     
     def cmd_reset(self):
         """Reset the card."""
-        self.card.reconnect(init=pycsc.SCARD_RESET_CARD)
+        # FIXME
+        raise NotImplementedException
     
     def cmd_parsetlv(self, start = None, end = None):
         "Decode the TLV data in the last response, start and end are optional"
@@ -190,14 +189,20 @@ class Card:
         "parse_tlv": cmd_parsetlv,
         "show_applications": cmd_show_applications,
     }
-
+    
+    PROTOMAP = {
+        0: smartcard.scard.SCARD_PCI_T0,
+        1: smartcard.scard.SCARD_PCI_T1,
+    }
     def _real_send(self, apdu):
         apdu_binary = apdu.render()
         
         if DEBUG:
             print ">> " + utils.hexdump(apdu_binary, indent = 3)
         
-        result_binary = self.card.transmit(apdu_binary)
+        apdu_bytes = map(lambda x: ord(x), apdu_binary)
+        data, sw1, sw2 = self.card.transmit(apdu_bytes, protocol=self.PROTOMAP[self.get_protocol()])
+        result_binary = map(lambda x: chr(x), data + [sw1,sw2])
         result = R_APDU(result_binary)
         
         self.last_apdu = apdu
@@ -249,8 +254,11 @@ class Card:
         return self.card.status().get("ATR","")
     
     def can_handle(cls, card):
-        """Determine whether this class can handle a given pycsc object."""
-        ATR = card.status().get("ATR","")
+        """Determine whether this class can handle a given card/connection object."""
+        if hasattr(card, "connection"):
+            ATR = smartcard.util.toASCIIString(card.connection.getATR())
+        else:
+            ATR = smartcard.util.toASCIIString(card.getATR())
         def match_list(atr, list):
             for (knownatr, mask) in list:
                 if mask is None:
@@ -310,7 +318,8 @@ class Card:
                 return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
     
     def get_protocol(self):
-        return ((self.card.status()["Protocol"] == pycsc.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]
+        hresult, reader, state, protocol, atr = smartcard.scard.SCardStatus( self.card.component.hcard )
+        return ((protocol == smartcard.scard.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]
     
     def get_driver_name(self):
         if len(self.DRIVER_NAME) > 1:
@@ -321,4 +330,8 @@ class Card:
     
     def close_card(self):
         "Disconnect from a card"
-        del self.card # FIXME: anything else to do?
+        self.card.disconnect()
+        if hasattr(self, "cardservice"):
+            del self.cardservice
+        del self.card
+

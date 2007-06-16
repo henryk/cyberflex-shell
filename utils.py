@@ -1,14 +1,13 @@
-try:
-    import pycsc
-except ImportError,e:
-    try:
-        import PyCSC
-        from PyCSC import pycsc # Windows
-        pycsc.SCARD_PROTOCOL_ANY = PyCSC.SCARD_PROTOCOL_ANY
-    except ImportError:
-        raise e # raise the original exception, masking the windows-only attempt
-
 import string, binascii, sys, re, getopt
+try:
+    import smartcard, smartcard.CardRequest
+except ImportError:
+    print >>sys.stderr, """Could not import smartcard module. Please install pyscard 
+from http://pyscard.sourceforge.net/
+If you can't install pyscard and want to continue using 
+pycsc you'll need to downgrade to SVN revision 246.
+"""
+    raise
 
 class CommandLineArgumentHelper:
     OPTIONS = "r:l"
@@ -17,7 +16,7 @@ class CommandLineArgumentHelper:
     reader = None
     
     def list_readers():
-        for index, name in enumerate(pycsc.listReader()):
+        for index, name in enumerate(smartcard.System.readers()):
             print "%i: %s" % (index, name)
     list_readers = staticmethod(list_readers)
     
@@ -32,48 +31,48 @@ class CommandLineArgumentHelper:
     def connect_to(reader):
         "Open the connection to a reader"
         
+        readerObject = None
+        
         if isinstance(reader, int) or reader.isdigit():
             reader = int(reader)
-            readerName = pycsc.listReader()[reader]
+            readerObject = smartcard.System.readers()[reader]
         else:
-            readerName = reader
+            for r in smartcard.System.readers():
+                if str(r).startswith(reader):
+                    readerObject = r
         
-        newState = pycsc.getStatusChange(ReaderStates=[
-                {'Reader': readerName, 'CurrentState':pycsc.SCARD_STATE_UNAWARE}
-            ]
-        )
+        if readerObject is None:
+            readerObject = smartcard.System.readers()[0]
         
-        print "Using reader: %s" % readerName
-        print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
-        
-        if not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT:
-            print "Please insert card ..."
-            
-            last_was_mute = False
-            
-            while not newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT \
-                or newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
+        print "Using reader: %s" % readerObject
+        unpatched = False
+        printed = False
+        while True:
+            try:
+                if not unpatched:
+                    cardrequest = smartcard.CardRequest.CardRequest( readers=[readerObject], timeout=0.1 )
+                else:
+                    cardrequest = smartcard.CardRequest.CardRequest( readers=[readerObject], timeout=1 )
                 
-                try:
-                    newState = pycsc.getStatusChange(ReaderStates=[
-                            {'Reader': readerName, 'CurrentState':newState[0]['EventState']}
-                        ], Timeout = 100 
-                    ) ## 100 ms latency from Ctrl-C to abort should be almost unnoticeable by the user
-                except pycsc.PycscException, e:
-                    if e.args[0] == 'Command timeout.': pass ## ugly
-                    else: raise
-                
-                if newState[0]['EventState'] & pycsc.SCARD_STATE_MUTE:
-                    if not last_was_mute:
-                        print "Card is mute, please retry ..."
-                    last_was_mute = True
-                else: 
-                    last_was_mute = False
-                
-            print "Card present: %s" % ((newState[0]['EventState'] & pycsc.SCARD_STATE_PRESENT) and "yes" or "no")
+                cardservice = cardrequest.waitforcard()
+                cardservice.connection.connect()
+                break
+            except TypeError:
+                unpatched = True
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except smartcard.Exceptions.CardRequestException:
+                if sys.exc_info()[1].message.endswith("Command timeout."):
+                    if not printed:
+                        print "Please insert card ..."
+                        printed = True
+                else:
+                    raise
+            except smartcard.Exceptions.NoCardException:
+                print "Card is mute or absent. Please retry."
         
-        print "ATR:          %s" % hexdump(newState[0]['Atr'], short = True)
-        return pycsc.pycsc(reader = readerName, protocol = pycsc.SCARD_PROTOCOL_ANY)
+        print "ATR:          %s" % hexdump(smartcard.util.toASCIIString(cardservice.connection.getATR()), short = True)
+        return cardservice
     connect_to = staticmethod(connect_to)
     
     def getopt(self, argv, opts="", long_opts=[]):

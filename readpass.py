@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-from utils import pycsc
 import utils, cards, TLV_utils, sys, binascii, time, traceback
 
 OPTIONS = "GW:R:"
@@ -25,8 +24,8 @@ if __name__ == "__main__":
             read_files = value
     
     if read_files is None:
-        pycsc_card = c.connect()
-        card = cards.new_card_object(pycsc_card)
+        card_object = c.connect()
+        card = cards.new_card_object(card_object)
         cards.generic_card.DEBUG = False
         
         print >>sys.stderr, "Using %s" % card.DRIVER_NAME

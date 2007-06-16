@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-from utils import pycsc
 import utils, cards, TLV_utils, sys, binascii, time, traceback
 
 STATUS_INTERVAL = 10
@@ -21,8 +20,8 @@ if __name__ == "__main__":
         top_level = ("".join( ["".join(e.split()) for e in arguments] )).split("/")
         top_level = [binascii.unhexlify(e) for e in top_level]
     
-    pycsc_card = c.connect()
-    card = cards.new_card_object(pycsc_card)
+    card_object = c.connect()
+    card = cards.new_card_object(card_object)
     cards.generic_card.DEBUG = False
     
     print >>sys.stderr, "Using %s" % card.DRIVER_NAME

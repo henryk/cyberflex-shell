@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-from utils import pycsc
-
 import crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt, datetime
 from shell import Shell
 
@@ -342,8 +340,8 @@ class Cyberflex_Shell(Shell):
         if reader is None:
             reader = self.reader
         
-        pycsc_card = utils.CommandLineArgumentHelper.connect_to(reader)
-        self.card = cards.new_card_object(pycsc_card)
+        card_object = utils.CommandLineArgumentHelper.connect_to(reader)
+        self.card = cards.new_card_object(card_object)
         
         self.unregister_commands(self, self.NOCARD_COMMANDS)
         self.register_commands(self, self.CARD_COMMANDS)

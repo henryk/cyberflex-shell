@@ -250,15 +250,20 @@ class Card:
         if purpose is None: purpose = Card.PURPOSE_SUCCESS
         return self.match_statusword(self.STATUS_MAP[purpose], sw)
     
-    def get_atr(self):
-        return self.card.status().get("ATR","")
-    
-    def can_handle(cls, card):
-        """Determine whether this class can handle a given card/connection object."""
+    def _get_atr(card):
         if hasattr(card, "connection"):
             ATR = smartcard.util.toASCIIString(card.connection.getATR())
         else:
             ATR = smartcard.util.toASCIIString(card.getATR())
+        return ATR
+    _get_atr = staticmethod(_get_atr)
+    
+    def get_atr(self):
+        return self._get_atr(self.card)
+    
+    def can_handle(cls, card):
+        """Determine whether this class can handle a given card/connection object."""
+        ATR = cls._get_atr(card)
         def match_list(atr, list):
             for (knownatr, mask) in list:
                 if mask is None:

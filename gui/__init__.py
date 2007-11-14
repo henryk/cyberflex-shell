@@ -3,9 +3,10 @@ import sys, os, time, TLV_utils, cards
 
 class Converter:
     SUPPORTS = ["jp2"]
+    MAXSIZE = 700
     
     def convert(type, image_data):
-        stdin, stdout = os.popen2("convert %s:- bmp:-" % type)
+        stdin, stdout = os.popen2("convert %s:- -resize %sx%s bmp:-" % (type, Converter.MAXSIZE, Converter.MAXSIZE))
         n = time.time()
         stdin.write(image_data)
         stdin.close()

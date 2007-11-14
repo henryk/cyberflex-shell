@@ -326,11 +326,15 @@ class Passport_Application(Application):
     del _key, _a, _b
     
     def decode_version_number(value):
-        result = []
-        while len(value) > 0:
-            v, value = value[:2], value[2:]
-            result.append(str(int(v)))
-        return " "+".".join(result)
+        #print "|||||||", value, "|", repr(value), "|"
+        try:
+            result = []
+            while len(value) > 0:
+                v, value = value[:2], value[2:]
+                result.append(str(int(v)))
+            return " "+".".join(result)
+        except:
+            return "".join( ["|||||||", value, "|", repr(value), "|"] )
     
     def decode_tag_list(value):
         result = []
@@ -439,6 +443,7 @@ class FAC:
             offset = offset+12
             
             self.data = data[offset:offset_+self.length]
+	    print len(self.data)
         
         FILE_EXTENSIONS = {
             0: "jpg",

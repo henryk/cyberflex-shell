@@ -1,5 +1,5 @@
 import gtk,gtk.glade,gobject
-import os, time, TLV_utils
+import sys, os, time, TLV_utils, cards
 
 class Converter:
     SUPPORTS = ["jp2"]
@@ -26,15 +26,27 @@ class PassportGUI:
         self.now_showing = 0
         self.main_window_xml = gtk.glade.XML(self.GLADE_FILE, "main")
         self.main_window = self.main_window_xml.get_widget("main")
+        self.card_factory = None
         
         signals = {
             "on_exit_clicked": self.exit_clicked,
+            "on_clear_clicked": self.clear_clicked,
+            "on_open_clicked": self.open_clicked,
             "on_main_delete_event": self.exit_clicked,
             "on_main_destroy": gtk.main_quit,
             "on_next_image_clicked": self.next_image,
             "on_prev_image_clicked": self.prev_image,
+            "on_mrz_entry1_activate": self.mrz1_activate,
+            "on_mrz_entry2_activate": self.mrz2_activate,
         }
         self.main_window_xml.signal_autoconnect(signals)
+    
+    def mrz1_activate(self, widget, event=None, data=None):
+        self.main_window_xml.get_widget("mrz_entry2").grab_focus()
+    
+    def mrz2_activate(self, widget, event=None, data=None):
+        self.main_window_xml.get_widget("open").clicked()
+        self.main_window_xml.get_widget("mrz_entry1").grab_focus()
     
     def exit_clicked(self, widget, event=None, data=None):
         gtk.main_quit()
@@ -116,6 +128,50 @@ class PassportGUI:
         
         self._set_images(data)
     
+    def clear_display(self):
+        for sources, transform, destinations in self.PROPERTY_TRANSFORMATIONS:
+            for index, dst in enumerate(destinations):
+                widget = self.main_window_xml.get_widget(dst)
+                if not self.format_strings.has_key(dst):
+                    self.format_strings[dst] = widget.get_label()
+                widget.set_label( "" )
+        self._set_images([])
+        self.main_window_xml.get_widget("mrz_entry1").set_text("")
+        self.main_window_xml.get_widget("mrz_entry2").set_text("")
+        self.update_image_shown()
+    
+    def clear_clicked(self, widget, event=None, data=None):
+        self.clear_display()
+    
+    def open_clicked(self, widget, event=None, data=None):
+        mrz1 = self.main_window_xml.get_widget("mrz_entry1").get_text()
+        mrz2 = self.main_window_xml.get_widget("mrz_entry2").get_text()
+        mrz = [e.strip().upper().replace(";","<") for e in mrz1, mrz2]
+        
+        self.clear_display()
+        
+        self.main_window_xml.get_widget("mrz_entry1").set_text(mrz[0])
+        self.main_window_xml.get_widget("mrz_entry2").set_text(mrz[1])
+        
+        if self.card_factory:
+            try:
+                card_object = self.card_factory.connect()
+                card = cards.new_card_object(card_object)
+                cards.generic_card.DEBUG = False
+                
+                print >>sys.stderr, "Using %s" % card.DRIVER_NAME
+                
+                p = cards.passport_application.Passport.from_card(card, mrz)
+                
+                self.set_passport(p)
+            except KeyboardInterrupt,SystemExit: raise
+            except:
+                import traceback
+                traceback.print_exc()
+    
+    def set_card_factory(self, c):
+        self.card_factory = c
+    
     def _set_images(self, data):
         self.images = []
         for type, image_data, description in data:
@@ -153,8 +209,13 @@ class PassportGUI:
             "description": description,
         } )
         
+        if not self.format_strings.has_key("image"):
+            self.format_strings["image"] = self.main_window_xml.get_widget("image").get_stock()
+        
         if pixbuf is not None:
             self.main_window_xml.get_widget("image").set_from_pixbuf(pixbuf)
+        else:
+            self.main_window_xml.get_widget("image").set_from_stock(*self.format_strings["image"])
         
         self.main_window_xml.get_widget("prev_image").set_property("sensitive", self.now_showing > 0)
         self.main_window_xml.get_widget("next_image").set_property("sensitive", self.now_showing < len(self.images)-1)

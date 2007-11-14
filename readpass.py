@@ -3,12 +3,13 @@
 
 import utils, cards, TLV_utils, sys, binascii, time, traceback
 
-OPTIONS = "GW:R:"
-LONG_OPTIONS = ["no-gui", "write-files-basename", "read-files-basename"]
+OPTIONS = "iGW:R:"
+LONG_OPTIONS = ["interactive","no-gui", "write-files-basename", "read-files-basename"]
 
 use_gui = True
 write_files = None
 read_files = None
+start_interactive = False
 
 if __name__ == "__main__":
     c = utils.CommandLineArgumentHelper()
@@ -18,12 +19,16 @@ if __name__ == "__main__":
     for option, value in options:
         if option in ("-G","--no-gui"):
             use_gui = False
+            start_interactive = False
         elif option in ("-W","--write-files-basename"):
             write_files = value
         elif option in ("-R","--read-files-basename"):
             read_files = value
+        elif option in ("-i", "--interactive"):
+            start_interactive = True
+            use_gui = True
     
-    if read_files is None:
+    if read_files is None and not start_interactive:
         card_object = c.connect()
         card = cards.new_card_object(card_object)
         cards.generic_card.DEBUG = False
@@ -36,15 +41,21 @@ if __name__ == "__main__":
             p = cards.passport_application.Passport.from_card(card, ["",arguments[0]])
         else:
             p = cards.passport_application.Passport.from_card(card)
-    else:
+    elif read_files is not None:
         p = cards.passport_application.Passport.from_files(basename=read_files)
+    elif start_interactive:
+        p = None
     
-    if write_files is not None:
+    if write_files is not None and not start_interactive:
         p.to_files(basename=write_files)
     
     if use_gui:
         import gui
         
         g = gui.PassportGUI()
-        g.set_passport(p)
+        if p is not None:
+            g.set_passport(p)
+        else:
+            g.clear_display()
+        g.set_card_factory(c)
         g.run()

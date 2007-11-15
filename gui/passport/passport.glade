@@ -1060,6 +1060,7 @@ Nationality</property>
 			  <property name="has_frame">True</property>
 			  <property name="invisible_char">*</property>
 			  <property name="activates_default">False</property>
+			  <property name="width_chars">50</property>
 			  <accessibility>
 			    <atkrelation target="mrz_entry2" type="flows-to"/>
 			  </accessibility>
@@ -1086,6 +1087,7 @@ Nationality</property>
 			  <property name="has_frame">True</property>
 			  <property name="invisible_char">*</property>
 			  <property name="activates_default">False</property>
+			  <property name="width_chars">50</property>
 			  <accessibility>
 			    <atkrelation target="mrz_entry1" type="flows-to"/>
 			  </accessibility>

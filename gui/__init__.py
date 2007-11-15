@@ -154,6 +154,9 @@ class PassportGUI:
         self.main_window_xml.get_widget("mrz_entry1").set_text(mrz[0])
         self.main_window_xml.get_widget("mrz_entry2").set_text(mrz[1])
         
+        while gtk.events_pending():
+            gtk.main_iteration_do(block=False)
+        
         if self.card_factory:
             try:
                 card_object = self.card_factory.connect()

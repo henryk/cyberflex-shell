@@ -14,6 +14,13 @@ case.
 You will also need the Crypto module for cryptography support, see 
 http://www.amk.ca/python/code/crypto.html
 
+For Passive Authentication of MRTDs (Passports with BAC) M2Crypto is used, see
+http://wiki.osafoundation.org/bin/view/Projects/MeTooCrypto
+which in turn requires openssl
+http://www.openssl.org
+and swig
+http://www.swig.org
+
 The shell has only been tested on a Linux system but should be platform
 independent, if you have Python, PC/SC and pycsc for your target platform.
 I am however unable to give support for any platform but Linux. 

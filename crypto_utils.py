@@ -42,6 +42,26 @@ def cipher(do_encrypt, cipherspec, key, data, iv = None):
     
     del cipher
     return result
+
+def hash(hashspec, data):
+    """Do a cryptographic hash operation.
+    hashspec must be of the form "cipher\""""
+    from Crypto.Hash import SHA, RIPEMD, MD2, MD4, MD5
+    
+    if len(hashspec) != 3 and len(hashspec) != 6:
+        raise ValueError, 'hashspec must be one of SHA, RIPEMD, MD2, MD4, MD5'
+    
+    h_class = locals().get(hashspec.upper(), None)
+    if h_class is None: 
+        raise ValueError, "Hash '%s' not known, must be one of %s" % (hashspec, ", ".join([e.lower() for e in dir() if e.isupper()]))
+    
+    hash = h_class.new()        
+    hash.update(data)
+    result = hash.digest()
+    #m.hexdigest()
+    
+    del hash
+    return result
     
 def operation_on_string(string1, string2, op):
     if len(string1) != len(string2):

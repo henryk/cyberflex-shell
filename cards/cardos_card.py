@@ -9,10 +9,22 @@ class CardOS_Card(ISO_7816_4_Card,building_blocks.Card_with_ls):
             ("3bf2180002c10a31fe58c80874", None),
         ]
 
+    APDU_LIFECYCLE = C_APDU("\x00\xCA\x01\x83\x00")
+    APDU_PHASE_CONTROL = C_APDU("\x80\x10\x00\x00\x00")
     APDU_LIST_X = C_APDU("\x80\x16\x01\x00\x00")
     LIST_X_DF = 0
     LIST_X_EF = 1
     LS_L_SIZE_TAG = 0x80
+
+    CARDOS_LIFE_CYCLE_STATUS_BYTE_DESCRIPTIONS = [
+         (0x10, "operational"),
+         (0x20,  "Administration"),
+         (0x23, "Personalization"),
+         (0x26, "Initialisation"),
+         (0x34, "Manufacturing"),
+         (0x3F, "Death"),
+         (0x29, "Erase in Progress"),
+     ]
 
     STATUS_WORDS = ( {
         "6283": "File is deactivated",
@@ -82,8 +94,24 @@ class CardOS_Card(ISO_7816_4_Card,building_blocks.Card_with_ls):
         result = self.list_x(1)
         print "EFs: " + ", ".join([utils.hexdump(a, short=True) for a in result])
     
+    def cmd_lifecycle(self):
+        "Check the current lifecycle"
+        result = self.send_apdu(C_APDU(self.APDU_LIFECYCLE))
+        #status = binascii.b2a_hex(result.data)
+        for hex, mes in self.CARDOS_LIFE_CYCLE_STATUS_BYTE_DESCRIPTIONS:
+          if (int(binascii.b2a_hex(result.data), 16) == hex):
+             print "Satus: " +  mes
+             break
+    
+    def cmd_phase_control(self):
+        "change lifecycle between Administration and Operational"
+        result = self.send_apdu(C_APDU(self.APDU_PHASE_CONTROL))
+
+             
     COMMANDS = {
         "list_dirs": cmd_listdirs,
         "list_files": cmd_listfiles,
         "ls": building_blocks.Card_with_ls.cmd_list,
+        "check_lifecycle": cmd_lifecycle, 
+        "phase_control": cmd_phase_control,
         }

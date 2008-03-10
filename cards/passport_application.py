@@ -208,6 +208,118 @@ class Passport_Application(Application):
         
         self.se = Passport_Security_Environment(self)
     
+    def verify_cms(self, data):
+        """Verify a pkcs7 SMIME message"""    
+        from M2Crypto import SMIME, X509, BIO
+        import base64, TLV_utils,  os
+
+        data3 = "-----BEGIN PKCS7-----\n"
+        data3 += base64.encodestring(data)
+        data3 += "-----END PKCS7-----"    
+        #print data3
+        
+        p7_bio = BIO.MemoryBuffer(data3)
+
+        # Instantiate an SMIME object.
+        s = SMIME.SMIME()
+        
+        # TODO: ugly hack for M2Crypto
+        body = TLV_utils.tlv_find_tag(TLV_utils.unpack(data), 0xA0,  1)[0][2]
+        thecert = TLV_utils.tlv_find_tag(body, 0xA0,  2)[1][2]
+
+        cert_bio = BIO.MemoryBuffer(TLV_utils.pack(thecert))
+        
+        # Load the signer's cert.
+        x509 = X509.load_cert_bio(cert_bio,  format=0)
+        sk = X509.X509_Stack()
+        sk.push(x509)
+        s.set_x509_stack(sk)
+        country = str(x509.get_issuer()).split('/')[1][2:]
+        #print country
+        
+        cacert = country + "-cacert.der"
+        #print cacert
+        
+        msgErr =  "couldn't parse certificate to determine URL for CACert, search the intertubes,"
+        msg =  "download CACert (convert to DER if necessary) and save it as \n\"%s\"" % cacert
+        
+        if not os.path.isfile(cacert):
+            try:
+                v = x509.get_ext("certificatePolicies").get_value()
+                start = v.find("CPS: ")
+                if start != -1:
+                    url = v[start + 5:-1]
+                    print "visit %s" % url,  msg
+                else:
+                    print msgErr,  msg
+            except Exception:
+                print msgErr,  msg
+            return ""
+            
+        # Load the signer's CA cert. 
+        st = X509.X509_Store()
+        #st.load_info('main')
+        x509CA = X509.load_cert(cacert,  format=0)
+        st.add_x509(x509CA)
+        s.set_x509_store(st)
+
+        # Load the data, verify it.
+        #p7, data = SMIME.smime_load_pkcs7_bio(p7_bio)
+        p7 = SMIME.load_pkcs7_bio(p7_bio)
+        
+        v = s.verify(p7)
+        return v
+    
+    def cmd_passive_auth(self, verbose=1):
+        "Perform passive authentication"
+
+        hashes = {}
+        result = ""
+        i = 0
+        
+        for name in ("DG1",  "DG2",  "SOD"):
+            fid = None
+            for n, f in self.INTERESTING_FILES:
+                if n == name: 
+                    fid = f
+                    break
+            if fid is None:
+                return
+
+            i += 1
+            result = self.open_file(fid, 0x0c)
+            if self.check_sw(result.sw):
+                contents, sw = self.read_binary_file()
+                #self.last_result = R_APDU(contents + self.last_sw)
+                
+                if name != "SOD":
+                    hashes[i] = crypto_utils.hash("SHA", contents)
+                else:
+                    result = self.verify_cms(contents[4:])
+        
+        #print hexdump(result)
+        #print "DG1: %s" % hexdump(hashes[i])
+        #print "DG2: %s" % hexdump(hashes[2])
+        
+        res = TLV_utils.tlv_find_tag(TLV_utils.unpack(result), 0x04)
+        if len(res) == 0:
+            print "failed to verify EF.SOD"
+            return
+        else:
+            print "verified EF.SOD"
+            
+        i = 0
+        for tag, length, hash in res:
+            i += 1
+            if hexdump(hashes[i]) == hexdump(hash):
+                print "DG%d hash verified: %s" % (i, binascii.b2a_hex(hash))
+            else:
+                print "DG%d hash failed:" % i
+                print "was:      %s" % binascii.b2a_hex(hashes[i])
+                print "expected: %s" % binascii.b2a_hex(hash)
+                return
+
+
     def before_send(self, apdu):
         if self.se:
             apdu = self.se.before_send(apdu)
@@ -293,6 +405,7 @@ class Passport_Application(Application):
         "read_dg": cmd_read_dg,
         "parse_biometrics": cmd_parse_biometrics,
         "parse_passport": cmd_parse_passport,
+        "passive_authenticate":cmd_passive_auth, 
     }
     
     DATA_GROUPS = {

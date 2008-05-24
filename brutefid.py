@@ -3,6 +3,9 @@
 
 import utils, cards, TLV_utils, sys, binascii, time, traceback
 
+OPTIONS = "m:x:d"
+LONG_OPTIONS = ["min-fid", "max-fid", "with-dirs"]
+
 STATUS_INTERVAL = 10
 
 results_dir = {}
@@ -11,14 +14,32 @@ top_level = None
 start_time = time.time()
 loop = 0
 
+min_fid = 0
+max_fid = 0xffff
+with_dirs = False
+
 if __name__ == "__main__":
     c = utils.CommandLineArgumentHelper()
     
-    (options, arguments) = c.getopt(sys.argv[1:])
+    (options, arguments) = c.getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
+    for option, value in options:
+        if option in ("-m","--min-fid"):
+            min_fid = int(value, 16)
+        elif option in ("-x","--max_fid"):
+            max_fid = int(value, 16)
+        elif option in ("-d","--with-dirs"):
+            with_dirs = not with_dirs
     
     if len(arguments) > 0:
         top_level = ("".join( ["".join(e.split()) for e in arguments] )).split("/")
         top_level = [binascii.unhexlify(e) for e in top_level]
+    
+    print >>sys.stderr, "Reading /%s from %04X to %04X%s" % (
+        top_level is not None and "/".join("%r" % e for e in top_level) or "",
+        min_fid,
+        max_fid,
+        with_dirs and " (DFs treated separately)" or "",
+    )
     
     card_object = c.connect()
     card = cards.new_card_object(card_object)
@@ -28,11 +49,16 @@ if __name__ == "__main__":
 
     card.change_dir()
     if top_level is not None:
-        for e in top_level: card.change_dir(e)
+        for e in top_level: 
+            if len(e) == 2:
+                card.change_dir(e)
+            else:
+                card.select_application(e)
     
     #objective = (0x2f00, 0x5015) ## Test cases on an OpenSC formatted PKCS#15 card
-    objective = range(0xffff+1) 
+    #objective = range(0xffff+1) 
     #objective = range(0x3fff+1) + range(0x7000,0x7fff+1) + range(0xc000,0xd4ff+1) + range(0xd600+1,0xd7ff+1) + range(0xdc00+1,0xffff+1)
+    objective = range(min_fid, max_fid+1)
     try:
         for fid in objective:
             data = chr(fid >> 8) + chr(fid & 0xff)
@@ -46,13 +72,17 @@ if __name__ == "__main__":
                     status = status + ")"
             loop = loop + 1
             
-            if True:
+            if with_dirs:
                 result = card.change_dir(data)
                 if card.check_sw(result.sw):
                     results_dir[fid] = result
                     card.change_dir()
                     if top_level is not None:
-                        for e in top_level: card.change_dir(e)
+                        for e in top_level: 
+                            if len(e) == 2:
+                                card.change_dir(e)
+                            else:
+                                card.select_application(e)
                 
                 print >>sys.stderr, "\rDir  %04X -> %02X%02X %s" % (fid, result.sw1, result.sw2, status),
             

@@ -3,13 +3,15 @@
 
 import utils, cards, TLV_utils, sys, binascii, time, traceback
 
-OPTIONS = "m:x:d"
-LONG_OPTIONS = ["min-fid", "max-fid", "with-dirs"]
+OPTIONS = "m:x:dD"
+LONG_OPTIONS = ["min-fid", "max-fid", "with-dirs", "dump-contents"]
 
 STATUS_INTERVAL = 10
+SPINNER = ['/','-','\\','|']
 
 results_dir = {}
 results_file = {}
+contents_file = {}
 top_level = None
 start_time = time.time()
 loop = 0
@@ -17,6 +19,20 @@ loop = 0
 min_fid = 0
 max_fid = 0xffff
 with_dirs = False
+dump_contents = False
+
+def dump(data):
+    print "Dump following (%i bytes)" % (len(data))
+    print utils.hexdump(data)
+    try:
+        print "Trying TLV parse:"
+        print TLV_utils.decode(data, tags=card.TLV_OBJECTS, context = card.DEFAULT_CONTEXT)
+        print "TLV parsed successfully"
+    except (SystemExit, KeyboardInterrupt):
+        raise
+    except:
+        print "TLV error"
+        pass
 
 if __name__ == "__main__":
     c = utils.CommandLineArgumentHelper()
@@ -29,6 +45,8 @@ if __name__ == "__main__":
             max_fid = int(value, 16)
         elif option in ("-d","--with-dirs"):
             with_dirs = not with_dirs
+        elif option in ("-D", "--dump-contents"):
+            dump_contents = not dump_contents
     
     if len(arguments) > 0:
         top_level = ("".join( ["".join(e.split()) for e in arguments] )).split("/")
@@ -84,13 +102,36 @@ if __name__ == "__main__":
                             else:
                                 card.select_application(e)
                 
-                print >>sys.stderr, "\rDir  %04X -> %02X%02X %s" % (fid, result.sw1, result.sw2, status),
+                print >>sys.stderr, "\rDir  %04X -> %02X%02X %s                      " % (fid, result.sw1, result.sw2, status),
             
             result = card.open_file(data)
             if card.check_sw(result.sw):
                 results_file[fid] = result
+                
+                if dump_contents:
+                    contents, sw = card.read_binary_file()
+                    contents_result = [sw]
+                    if sw == '\x69\x81': # Command incompatible with file structure, retry read_record
+                        # FIXME this logic for reading records is not correct
+                        print >>sys.stderr, "\rFile %04X -> %02X%02X %s  Reading records...  " % (fid, result.sw1, result.sw2, status),
+                        records = {}
+                        for i in range(256):
+                            if i%STATUS_INTERVAL == 0:
+                                print >>sys.stderr, "\rFile %04X -> %02X%02X %s  Reading records...  %s" % (fid, result.sw1, result.sw2, status, 
+                                    SPINNER[ (i/STATUS_INTERVAL) % len(SPINNER) ],
+                                ),
+                            records[i] = card.read_record(i, 4, 0)
+                        contents_result.append(records)
+                    elif sw == '\x69\x82': # Security status not satisfied
+                        pass
+                    elif sw == '\x90\x00': # Command execution successful
+                        contents_result.append(contents)
+                    elif len(contents) > 0: # Something was returned, assume successful execution
+                        contents_result.append(contents)
+                    
+                    contents_file[fid] = contents_result
             
-            print >>sys.stderr, "\rFile %04X -> %02X%02X %s" % (fid, result.sw1, result.sw2, status),
+            print >>sys.stderr, "\rFile %04X -> %02X%02X %s                      " % (fid, result.sw1, result.sw2, status),
     except (SystemExit, KeyboardInterrupt):
         raise
     except:
@@ -117,4 +158,28 @@ if __name__ == "__main__":
         if len(result.data) > 0:
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
+        
+        if contents_file.has_key( fid ):
+            contents_result = contents_file[fid]
+            if contents_result[0] == '\x69\x81':
+                print "Record-oriented file"
+            elif contents_result[0] == '\x69\x82':
+                print "Can't read file"
+            elif len(contents_result) > 1:
+                if contents_result[0] == '\x90\x00':
+                    print "Transparent file"
+                else:
+                    print "Strange file (%02X%02X)" % (ord(contents_result[0][0]), ord(contents_result[0][1]))
+            
+            if len(contents_result) > 1:
+                if isinstance(contents_result[1], str):
+                    dump(contents_result[1])
+                else:
+                    for index, data in contents_result[1].items():
+                        if len(data) > 0:
+                            print "Record %i:" % index
+                            dump(data)
+                            print
+            
+            print
 

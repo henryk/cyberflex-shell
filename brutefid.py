@@ -52,7 +52,7 @@ if __name__ == "__main__":
         top_level = ("".join( ["".join(e.split()) for e in arguments] )).split("/")
         top_level = [binascii.unhexlify(e) for e in top_level]
     
-    print >>sys.stderr, "Reading /%s from %04X to %04X%s" % (
+    print "Reading /%s from %04X to %04X%s" % (
         top_level is not None and "/".join("%r" % e for e in top_level) or "",
         min_fid,
         max_fid,
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     card = cards.new_card_object(card_object)
     cards.generic_card.DEBUG = False
     
-    print >>sys.stderr, "Using %s" % card.DRIVER_NAME
+    print "Using %s" % card.DRIVER_NAME
 
     card.change_dir()
     if top_level is not None:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     
     print "="*80
     print "Results:"
-    for fid, result in results_dir.items():
+    for fid, result in sorted(results_dir.items()):
         if results_file.has_key(fid):
             continue
         
@@ -152,7 +152,7 @@ if __name__ == "__main__":
             print utils.hexdump(result.data)
             print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
     
-    for fid, result in results_file.items():
+    for fid, result in sorted(results_file.items()):
         print "-"*80
         print "File\t%04X" % fid
         if len(result.data) > 0:

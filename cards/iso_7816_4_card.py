@@ -11,6 +11,7 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     DRIVER_NAME = ["ISO 7816-4"]
     FID_MF = "\x3f\x00"
     
+    SELECT_FILE_P1 = 0x02
     SELECT_P2 = 0x0
     
 ##    def can_handle(cls, card):
@@ -47,7 +48,7 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     def open_file(self, fid, p2 = None):
         "Open an EF under the current DF"
         if p2 is None: p2 = self.SELECT_P2
-        return self.select_file(0x02, p2, fid)
+        return self.select_file(self.SELECT_FILE_P1, p2, fid)
     
     def cmd_open(self, file):
         "Open a file"

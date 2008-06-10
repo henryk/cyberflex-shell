@@ -217,7 +217,8 @@ class Cyberflex_Shell(Shell):
         "Parse a fancy APDU and print the result"
         apdu = utils.C_APDU.parse_fancy_apdu(*args)
         data = apdu.render()
-        self.card.last_result = utils.R_APDU(data+"\x00\x00")
+	if hasattr(self, "card"):
+            self.card.last_result = utils.R_APDU(data+"\x00\x00")
         print utils.hexdump(data)
     
     def _update_prompt(self):

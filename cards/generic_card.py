@@ -66,6 +66,8 @@ class Card:
         "\xD2\x76\x00\x00\x25\x46\x53\x02\x00": ("DF_FAHRSCHEIN_NEU", "Fahrschein",            {"fid": "\xB0\x00"}),
         "\xD2\x76\x00\x00\x25\x48\x42\x02\x00": ("DF_BANKING_20" ,    "HBCI",                  {"fid": "\xA6\x00"}),
         "\xD2\x76\x00\x00\x25\x4E\x50\x01\x00": ("DF_NOTEPAD",        "Notepad",               {"fid": "\xA6\x10"}),
+        
+        "\xd2\x76\x00\x00\x85\x01\x00":         ("NFC_TYPE_4",        "NFC NDEF Application on tag type 4", {"alias": ("nfc",)}, ),
     }
     # Alias for DF_BOERSE_NEU
     APPLICATIONS["\xA0\x00\x00\x00\x59\x50\x41\x43\x45\x01\x00"] = APPLICATIONS["\xD2\x76\x00\x00\x25\x45\x50\x02\x00"]

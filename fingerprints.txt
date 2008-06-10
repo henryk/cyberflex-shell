@@ -30,3 +30,6 @@
 0:4a434f5034315632324d,P,1,55555555
     New Zealandic Passport
 # These have a fixed 4-byte UID
+
+0:01,P,1,55555555,08
+    Dutch passport

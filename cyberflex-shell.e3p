@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.7.dtd">
 <!-- Project file for project cyberflex-shell -->
-<!-- Saved: 2007-06-08, 03:16:36 -->
-<!-- Copyright (C) 2007 Henryk Plötz, henryk@ploetzli.ch -->
+<!-- Saved: 2008-06-23, 21:48:06 -->
+<!-- Copyright (C) 2008 Henryk Plötz, henryk@ploetzli.ch -->
 <Project version="3.7">
   <ProgLanguage mixed="0">Python</ProgLanguage>
   <UIType>Qt</UIType>
@@ -108,6 +108,22 @@
     <Source>
       <Dir>gui</Dir>
       <Name>__init__.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>vrs_application.py</Name>
+    </Source>
+    <Source>
+      <Dir>cards</Dir>
+      <Name>nfc_application.py</Name>
+    </Source>
+    <Source>
+      <Dir>gui</Dir>
+      <Name>PassportGUI.py</Name>
+    </Source>
+    <Source>
+      <Dir>gui</Dir>
+      <Name>ireadyou.py</Name>
     </Source>
   </Sources>
   <Forms>

@@ -1,7 +1,160 @@
+import sys;sys.path.append(".."); sys.path.append(".")
 import TLV_utils
 from generic_card import *
 from generic_application import Application
 import building_blocks
+
+class iso_node(object):
+    SORT_NONE = False
+    SORT_NORMAL = True
+    SORT_DFFIRST = object() # Random object, just for identity testing
+    
+    def __init__(self, parent=None, management_information=None, card_object=None, generic_description=None):
+        self._parent = parent
+        self._management_information = management_information # FCI, FCP or FMD
+        self._card_object = card_object
+        self._children = []
+        self._generic_description = generic_description # Note: Only used for iso_node, not for iso_ef or iso_df
+        
+        if self._parent is not None:
+            self._parent.add_child(self)
+            if self._card_object is None and self._parent._card_object is not None:
+                self._card_object = self._parent._card_object
+    
+    def print_node(self, indent=0, stream=None,  stringlist=None,  **kwargs):
+        result = self._format_node(indent, **kwargs)
+        if stream is not None:
+            stream.write("\n".join(result))
+        elif stringlist is not None:
+            stringlist.extend(result)
+        else:
+            print "\n".join(result)
+        
+        if kwargs.get("recurse", True):
+            tosort = kwargs.get("sort", self.SORT_NONE)
+            
+            def cmp_normal(a,b): return cmp(a.fid,b.fid)
+            def cmp_dffirst(a,b):
+                return (a.__class__ != b.__class__) and (a.__class__ == iso_df and -1 or 1) or cmp(a.fid,b.fid)
+            
+            if tosort is self.SORT_DFFIRST:
+                for child in sorted(self._children, cmp=cmp_dffirst):
+                    child.print_node(indent+1, **kwargs)
+            elif tosort:
+                for child in sorted(self._children, cmp=cmp_normal):
+                    child.print_node(indent+1, **kwargs)
+            else:
+                for child in self._children:
+                    child.print_node(indent+1, **kwargs)
+
+    def _dump_internal(self, data, indent, do_tlv=True):
+        c = utils.hexdump(data)
+        r = map(lambda a: self.get_indent(indent)+a, c.splitlines(False))
+        if do_tlv:
+            try:
+                if self._card_object is not None:
+                    c = TLV_utils.decode(data, tags=self._card_object.TLV_OBJECTS, context = self._card_object.DEFAULT_CONTEXT)
+                else:
+                    c = TLV_utils.decode(data)
+                r.append( self.get_indent(indent) + "Trying TLV parse:" )
+                r.extend( map(lambda a: self.get_indent(indent)+a, c.splitlines(False)) )
+            except (SystemExit, KeyboardInterrupt):
+                raise
+            except:
+                pass
+        return r
+
+    def _format_node(self, indent, **kwargs):
+        result = []
+        if self._generic_description:
+            result.append(self.get_indent(indent) + "+ " + self._generic_description)
+        else:
+            result.append(self.get_indent(indent) + "+ Generic Node")
+        if kwargs.get("with_management_information", True):
+            result.extend(self._format_management_information(indent))
+        return result
+    
+    def _format_management_information(self, indent):
+        result = []
+        if self._management_information is None: return result
+        
+        try:
+            if self._card_object is not None:
+                c = TLV_utils.decode(self._management_information, tags=self._card_object.TLV_OBJECTS, context = self._card_object.DEFAULT_CONTEXT)
+            else:
+                c = TLV_utils.decode(self._management_information)
+            result.append(self.get_indent(indent+1) + "Management information:")
+            result.extend( map(lambda a: self.get_indent(indent+2)+a, c.splitlines(False)) )
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except:
+            result.append(self.get_indent(indent+1) + "Raw dump of unparseable management information following:")
+            result.extend(self._dump_internal(self._management_information, indent=indent+2, do_tlv=False))
+        
+        return result
+    
+    def add_child(self, node):
+        raise NotImplementedError, "Can't add a child to a mere node"
+
+    def get_fid(self): return self._fid
+    def get_parent(self): return self._parent
+    
+    fid = property(get_fid)
+    parent = property(get_parent)
+    
+    @staticmethod
+    def get_indent(indent):
+        return "\t"*indent
+
+class iso_ef(iso_node):
+    TYPE_TRANSPARENT = 1
+    TYPE_RECORD = 2
+    
+    def __init__(self, fid, type=None, **kwargs):
+        super(iso_ef, self).__init__(**kwargs)
+        self._fid = fid
+        self._content = None
+        self._type = type
+    
+    def _format_node(self, indent, **kwargs):
+        result = [self.get_indent(indent) + "+ EF: %s" % utils.hexdump(self.fid, short=True)]
+        
+        if kwargs.get("with_management_information", True):
+            result.extend(self._format_management_information(indent))
+        
+        if kwargs.get("with_content", True) and self._content is not None:
+            if self._type is self.TYPE_TRANSPARENT:
+                result.append(self.get_indent(indent+1) + 
+                    "Contents (length: %i (0x%0X)):" % (len(self._content),len(self._content)) 
+                    )
+                result.extend(self._dump_internal(self._content,indent=indent+2))
+            elif self._type is self.TYPE_RECORD:
+                result.append(self.get_indent(indent+1) + "%i (0x0%X) records following:" % (len(self._content),len(self._content)) )
+                
+                for i,d in enumerate(self._content):
+                    result.append(self.get_indent(indent+2) + 
+                        "Record %i (length: %i (0x%0X)):" % (i, len(d),len(d)) 
+                        )
+                    result.extend(self._dump_internal(d,indent=indent+3))
+            else:
+                result.append(self.get_indent(indent+1) + "Contents:")
+                result.append(self.get_indent(indent+2) + repr(self._content))
+        return result
+    
+class iso_df(iso_node):
+    def __init__(self, fid, **kwargs):
+        super(iso_df, self).__init__(**kwargs)
+        self._fid = fid
+
+    def _format_node(self, indent, **kwargs):
+        result = [self.get_indent(indent) + "+ DF: %s" % utils.hexdump(self.fid, short=True)]
+        if kwargs.get("with_management_information", True):
+            result.extend(self._format_management_information(indent))
+        return result
+
+    def add_child(self, node):
+        if node not in self._children:
+            self._children.append(node)
 
 class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
@@ -13,6 +166,10 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     
     SELECT_FILE_P1 = 0x02
     SELECT_P2 = 0x0
+    SELECT_FILE_LE = None
+    
+    EF_CLASS = iso_ef
+    DF_CLASS = iso_df
     
 ##    def can_handle(cls, card):
 ##        return True
@@ -22,7 +179,7 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
         result = self.send_apdu(
             C_APDU(self.APDU_SELECT_FILE,
             p1 = p1, p2 = p2,
-            data = fid) )
+            data = fid, le = self.SELECT_FILE_LE) )
         return result
     
     def change_dir(self, fid = None):
@@ -205,3 +362,21 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     } )
     
     TLV_OBJECTS = TLV_utils.tags
+
+if __name__ == "__main__":
+    
+    root = iso_df('\x3f\x00')
+    ef_one = iso_ef('\xb0\x01', parent=root, type=iso_ef.TYPE_TRANSPARENT, management_information="he")
+    ef_two = iso_ef('\xa0\x00', parent=root, type=iso_ef.TYPE_RECORD, management_information="h")
+    df_one = iso_df('\xa0\x01', parent=root)
+    df_two = iso_df('\xa0\x00', parent=df_one)
+    ef_three = iso_ef('\x00\x03', parent=df_one, type=iso_ef.TYPE_RECORD)
+    ef_four = iso_ef('\x00\x04', parent=df_one)
+    ef_five = iso_ef('\x00\x05', parent=df_two)
+    df_three = iso_df('\xa0\x00', parent=df_one)
+    
+    ef_one._content = "Foobaluhahihohoahajabla"
+    ef_two._content = ("bla", "bli", "blu")
+    ef_three._content = ("Foobaluhahihohoahajabla",)
+    
+    root.print_node(sort=root.SORT_DFFIRST)

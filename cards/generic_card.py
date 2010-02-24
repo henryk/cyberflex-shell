@@ -68,6 +68,12 @@ class Card:
         "\xD2\x76\x00\x00\x25\x4E\x50\x01\x00": ("DF_NOTEPAD",        "Notepad",               {"fid": "\xA6\x10"}),
         
         "\xd2\x76\x00\x00\x85\x01\x00":         ("NFC_TYPE_4",        "NFC NDEF Application on tag type 4", {"alias": ("nfc",)}, ),
+        
+        # From TR-03110_v201_pdf.pdf
+        "\xE8\x07\x04\x00\x7f\x00\x07\x03\x02": ("DF_eID", "eID application"),
+        
+        "\xd2\x76\x00\x00\x25\x4b\x41\x4e\x4d\x30\x31\x00": ("VRS_TICKET", "VRS Ticket", {"fid": "\xad\x00", "alias": ("vrs",)}, ),
+        "\xd2\x76\x00\x01\x35\x4b\x41\x4e\x4d\x30\x31\x00": ("VRS_TICKET", "VRS Ticket", {"fid": "\xad\x00",}, ),
     }
     # Alias for DF_BOERSE_NEU
     APPLICATIONS["\xA0\x00\x00\x00\x59\x50\x41\x43\x45\x01\x00"] = APPLICATIONS["\xD2\x76\x00\x00\x25\x45\x50\x02\x00"]
@@ -76,7 +82,7 @@ class Card:
     
     ## Format: "RID (binary)": ("vendor name", [optional: {more information}])
     VENDORS = {
-        "\xD2\x76\x00\x01\x24": ("OpenPGP", ),
+        "\xD2\x76\x00\x01\x24": ("Free Software Foundation Europe", ),
         "\xD2\x76\x00\x00\x25": ("Bankenverlag", ),
         "\xD2\x76\x00\x00\x60": ("Wolfgang Rankl", ),
         "\xD2\x76\x00\x00\x05": ("Giesecke & Devrient", ),

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import utils, cards, TLV_utils, sys, binascii, time, traceback
+import utils, cards, TLV_utils, sys, binascii, time, traceback, smartcard
 
 OPTIONS = "m:x:dD"
 LONG_OPTIONS = ["min-fid", "max-fid", "with-dirs", "dump-contents"]
@@ -73,6 +73,8 @@ if __name__ == "__main__":
             else:
                 card.select_application(e)
     
+    root_node = cards.iso_7816_4_card.iso_node(generic_description="Brute Force Results Tree")
+    
     #objective = (0x2f00, 0x5015) ## Test cases on an OpenSC formatted PKCS#15 card
     #objective = range(0xffff+1) 
     #objective = range(0x3fff+1) + range(0x7000,0x7fff+1) + range(0xc000,0xd4ff+1) + range(0xd600+1,0xd7ff+1) + range(0xdc00+1,0xffff+1)
@@ -85,13 +87,18 @@ if __name__ == "__main__":
                 status = "(elapsed: %i:%02i:%02i" % (elapsed / 3600, (elapsed / 60) % 60, elapsed % 60)
                 try:
                     eta = (elapsed / loop) * (len(objective) - loop)
-                    status = status + ", left: %i:%02i:%02i)" % (eta / 3600, (eta / 60) % 60, eta % 60)
-                except:
-                    status = status + ")"
+                    status = status + ", left: %i:%02i:%02i" % (eta / 3600, (eta / 60) % 60, eta % 60)
+                except: pass
+		if with_dirs: status = status + ", dirs: %2i" % len(results_dir)
+                status = status + ", files: %2i)" % len(results_file)
             loop = loop + 1
             
             if with_dirs:
-                result = card.change_dir(data)
+                try:
+                    result = card.change_dir(data)
+                except smartcard.Exceptions.CardConnectionException:
+                    time.sleep(1)
+                    result = card.change_dir(data)
                 if card.check_sw(result.sw):
                     results_dir[fid] = result
                     card.change_dir()
@@ -104,7 +111,11 @@ if __name__ == "__main__":
                 
                 print >>sys.stderr, "\rDir  %04X -> %02X%02X %s                      " % (fid, result.sw1, result.sw2, status),
             
-            result = card.open_file(data)
+            try:
+                result = card.open_file(data)
+            except smartcard.Exceptions.CardConnectionException:
+                time.sleep(1)
+                result = card.open_file(data)
             if card.check_sw(result.sw):
                 results_file[fid] = result
                 
@@ -149,15 +160,17 @@ if __name__ == "__main__":
         print "-"*80
         print "Dir\t%04X" % fid
         if len(result.data) > 0:
-            print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
+	    print utils.hexdump(result.data)
+	    try: print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
+	    except: print "Exception during TLV parse"
     
     for fid, result in sorted(results_file.items()):
         print "-"*80
         print "File\t%04X" % fid
         if len(result.data) > 0:
             print utils.hexdump(result.data)
-            print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
+            try: print TLV_utils.decode(result.data,tags=card.TLV_OBJECTS)
+	    except: print "Exception during TLV parse"
         
         if contents_file.has_key( fid ):
             contents_result = contents_file[fid]
@@ -182,4 +195,7 @@ if __name__ == "__main__":
                             print
             
             print
+    
+    print "<"*40 + ">"*40
+    root_node.print_node()
 

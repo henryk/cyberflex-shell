@@ -36,3 +36,132 @@
 0.4.0.127.0.7.2.2.1 id-CA Chip Authentication object identifiers
 0.4.0.127.0.7.2.2.1.1 id-CA-DH DH Algorithm suite for Chip Authentication
 0.4.0.127.0.7.2.2.1.2 id-CA-ECDH ECDH Algorithm suite for Chip Authentication
+
+# From TR-03110_v201_pdf.pdf
+0.4.0.127.0.7.3.2 id-eID eID application
+0.4.0.127.0.7.3.2.1 id-SecurityObject
+
+0.4.0.127.0.7.2.2.1 id-PK Chip Authentication Public Key
+
+0.4.0.127.0.7.2.2.1.1 id-PK-DH
+0.4.0.127.0.7.2.2.1.2 id-PK-ECDH
+
+0.4.0.127.0.7.2.2.2 id-TA Terminal Authentication
+
+0.4.0.127.0.7.2.2.2.1 id-TA-RSA
+0.4.0.127.0.7.2.2.2.1.1 id-TA-RSA-v1-5-SHA-1
+0.4.0.127.0.7.2.2.2.1.2 id-TA-RSA-v1-5-SHA-256
+0.4.0.127.0.7.2.2.2.1.3 id-TA-RSA-PSS-SHA-1
+0.4.0.127.0.7.2.2.2.1.4 id-TA-RSA-PSS-SHA-256
+
+0.4.0.127.0.7.2.2.2.2 id-TA-ECDSA
+0.4.0.127.0.7.2.2.2.2.1 id-TA-ECDSA-SHA-1
+0.4.0.127.0.7.2.2.2.2.2 id-TA-ECDSA-SHA-224
+0.4.0.127.0.7.2.2.2.2.3 id-TA-ECDSA-SHA-256
+
+0.4.0.127.0.7.2.2.3 id-CA Chip Authentication protocol
+
+0.4.0.127.0.7.2.2.3.1 id-CA-DH
+0.4.0.127.0.7.2.2.3.1.1 id-CA-DH-3DES-CBC-CBC
+0.4.0.127.0.7.2.2.3.1.2 id-CA-DH-AES-CBC-CMAC-128
+0.4.0.127.0.7.2.2.3.1.3 id-CA-DH-AES-CBC-CMAC-192
+0.4.0.127.0.7.2.2.3.1.4 id-CA-DH-AES-CBC-CMAC-256
+
+0.4.0.127.0.7.2.2.3.2 id-CA-ECDH
+0.4.0.127.0.7.2.2.3.2.1 id-CA-ECDH-3DES-CBC-CBC
+0.4.0.127.0.7.2.2.3.2.2 id-CA-ECDH-AES-CBC-CMAC-128
+0.4.0.127.0.7.2.2.3.2.3 id-CA-ECDH-AES-CBC-CMAC-192
+0.4.0.127.0.7.2.2.3.2.4 id-CA-ECDH-AES-CBC-CMAC-256
+
+0.4.0.127.0.7.2.2.4 id-PACE PACE protocol
+
+0.4.0.127.0.7.2.2.4.1 id-PACE-DH-GM
+0.4.0.127.0.7.2.2.4.1.1 id-PACE-DH-GM-3DES-CBC-CBC
+0.4.0.127.0.7.2.2.4.1.2 id-PACE-DH-GM-AES-CBC-CMAC-128
+0.4.0.127.0.7.2.2.4.1.3 id-PACE-DH-GM-AES-CBC-CMAC-192
+0.4.0.127.0.7.2.2.4.1.4 id-PACE-DH-GM-AES-CBC-CMAC-256
+
+0.4.0.127.0.7.2.2.4.2 id-PACE-ECDH-GM
+0.4.0.127.0.7.2.2.4.2.1 id-PACE-ECDH-GM-3DES-CBC-CBC
+0.4.0.127.0.7.2.2.4.2.2 id-PACE-ECDH-GM-AES-CBC-CMAC-128
+0.4.0.127.0.7.2.2.4.2.3 id-PACE-ECDH-GM-AES-CBC-CMAC-192
+0.4.0.127.0.7.2.2.4.2.4 id-PACE-ECDH-GM-AES-CBC-CMAC-256
+
+0.4.0.127.0.7.2.2.4.3 id-PACE-DH-IM
+0.4.0.127.0.7.2.2.4.3.1 id-PACE-DH-IM-3DES-CBC-CBC
+0.4.0.127.0.7.2.2.4.3.2 id-PACE-DH-IM-AES-CBC-CMAC-128
+0.4.0.127.0.7.2.2.4.3.3 id-PACE-DH-IM-AES-CBC-CMAC-192
+0.4.0.127.0.7.2.2.4.3.4 id-PACE-DH-IM-AES-CBC-CMAC-256
+
+0.4.0.127.0.7.2.2.4.4 id-PACE-ECDH-IM
+0.4.0.127.0.7.2.2.4.4.1 id-PACE-ECDH-IM-3DES-CBC-CBC
+0.4.0.127.0.7.2.2.4.4.2 id-PACE-ECDH-IM-AES-CBC-CMAC-128
+0.4.0.127.0.7.2.2.4.4.3 id-PACE-ECDH-IM-AES-CBC-CMAC-192
+0.4.0.127.0.7.2.2.4.4.4 id-PACE-ECDH-IM-AES-CBC-CMAC-256
+
+0.4.0.127.0.7.2.2.5 id-RI Restricted Identification protocol
+
+0.4.0.127.0.7.2.2.5.1 id-RI-DH
+0.4.0.127.0.7.2.2.5.1.1 id-RI-DH-SHA-1
+0.4.0.127.0.7.2.2.5.1.2 id-RI-DH-SHA-224
+0.4.0.127.0.7.2.2.5.1.3 id-RI-DH-SHA-256
+
+0.4.0.127.0.7.2.2.5.2 id-RI-ECDH
+0.4.0.127.0.7.2.2.5.2.1 id-RI-ECDH-SHA-1
+0.4.0.127.0.7.2.2.5.2.2 id-RI-ECDH-SHA-224
+0.4.0.127.0.7.2.2.5.2.3 id-RI-ECDH-SHA-256
+
+0.4.0.127.0.7.2.2.6 id-CI Card Info locator
+
+# From BSI-TR-03111_pdf.pdf
+0.4.0.127.0.7.1.1 id-ecc Root identifier for elliptic curve cryptography
+
+0.4.0.127.0.7.1.1.2.2 id-ecTLVKeyFormat 
+0.4.0.127.0.7.1.1.2.2.1 id-ecTLVPublicKey
+
+0.4.0.127.0.7.1.1.4.1 ecdsa-plain-signatures
+0.4.0.127.0.7.1.1.4.1.1 ecdsa-plain-SHA1
+0.4.0.127.0.7.1.1.4.1.2 ecdsa-plain-SHA224
+0.4.0.127.0.7.1.1.4.1.3 ecdsa-plain-SHA256
+0.4.0.127.0.7.1.1.4.1.4 ecdsa-plain-SHA384
+0.4.0.127.0.7.1.1.4.1.5 ecdsa-plain-SHA512
+0.4.0.127.0.7.1.1.4.1.6 ecdsa-plain-RIPEMD160
+
+0.4.0.127.0.7.1.1.5.1 ecka-eg ElGamal Key Agreement
+
+0.4.0.127.0.7.1.1.5.1.1 ecka-eg-X963KDF
+0.4.0.127.0.7.1.1.5.1.1.1 ecka-eg-X963KDF-SHA1
+0.4.0.127.0.7.1.1.5.1.1.2 ecka-eg-X963KDF-SHA224
+0.4.0.127.0.7.1.1.5.1.1.3 ecka-eg-X963KDF-SHA256
+0.4.0.127.0.7.1.1.5.1.1.4 ecka-eg-X963KDF-SHA385
+0.4.0.127.0.7.1.1.5.1.1.5 ecka-eg-X963KDF-SHA512
+0.4.0.127.0.7.1.1.5.1.1.6 ecka-eg-X963KDF-RIPEMD160
+
+0.4.0.127.0.7.1.1.5.1.2 ecka-eg-SessionKDF
+0.4.0.127.0.7.1.1.5.1.2.1 ecka-eg-SessionKDF-3DES
+0.4.0.127.0.7.1.1.5.1.2.2 ecka-eg-SessionKDF-AES128
+0.4.0.127.0.7.1.1.5.1.2.3 ecka-eg-SessionKDF-AES192
+0.4.0.127.0.7.1.1.5.1.2.4 ecka-eg-SessionKDF-AES256
+
+0.4.0.127.0.7.1.1.5.2 ecka-dh Anonymous Diffie-Hellman Key Agreement
+
+0.4.0.127.0.7.1.1.5.2.1 ecka-dh-X963KDF
+0.4.0.127.0.7.1.1.5.2.1.1 ecka-dh-X963KDF-SHA1
+0.4.0.127.0.7.1.1.5.2.1.2 ecka-dh-X963KDF-SHA224
+0.4.0.127.0.7.1.1.5.2.1.3 ecka-dh-X963KDF-SHA256
+0.4.0.127.0.7.1.1.5.2.1.4 ecka-dh-X963KDF-SHA385
+0.4.0.127.0.7.1.1.5.2.1.5 ecka-dh-X963KDF-SHA512
+0.4.0.127.0.7.1.1.5.2.1.6 ecka-dh-X963KDF-RIPEMD160
+
+0.4.0.127.0.7.1.1.5.2.2 ecka-dh-SessionKDF
+0.4.0.127.0.7.1.1.5.2.2.1 ecka-dh-SessionKDF-3DES
+0.4.0.127.0.7.1.1.5.2.2.2 ecka-dh-SessionKDF-AES128
+0.4.0.127.0.7.1.1.5.2.2.3 ecka-dh-SessionKDF-AES192
+0.4.0.127.0.7.1.1.5.2.2.4 ecka-dh-SessionKDF-AES256
+
+
+1.2.840.10045 ansi-X9-62 ANSI X9.62 root identifier
+1.2.840.10045.2 id-publicKeyType
+1.2.840.10045.2.1 id-ecPublicKey Elliptic curve public key in X9.62 format
+
+

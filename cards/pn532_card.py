@@ -25,9 +25,12 @@ class PN532_Virtual_Card(Card):
         self.cmd_pn532("d4 4a 01 00")
     
     def pn532_transceive(self, cmd):
-        apdu = C_APDU(self.APDU_TRANSCEIVE_PN532, lc=len(cmd), data=cmd)
-        response = self.send_apdu(apdu)
-        return response
+        if hasattr(self.reader, "pn532_transceive_raw"):
+            return R_APDU(self.reader.pn532_transceive_raw(cmd))
+        else:
+            apdu = C_APDU(self.APDU_TRANSCEIVE_PN532, lc=len(cmd), data=cmd)
+            response = self.send_apdu(apdu)
+            return response
     
     def pn532_parse(self, response):
         result = []

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import crypto_utils, utils, cards, os, re, binascii, sys, exceptions, traceback, getopt, datetime
+import crypto_utils, utils, cards, readers, os, re, binascii, sys, exceptions, traceback, getopt, datetime
 from shell import Shell
 
 class Logger(object):
@@ -94,7 +94,8 @@ class Cyberflex_Shell(Shell):
     
     def cmd_listreaders(self):
         "List the available readers"
-        list_readers()
+        for i, (name, obj) in enumerate(readers.list_readers()):
+            print "%i: %s" % (i,name)
     
     def cmd_enc(self, *args):
         "Encrypt or decrypt with openssl-like interface"
@@ -156,7 +157,7 @@ class Cyberflex_Shell(Shell):
 
     def cmd_atr(self, *args):
         """Print the ATR of the currently inserted card."""
-        print "ATR: %s" % utils.hexdump(self.card.card.status()['ATR'], short=True)
+        print "ATR: %s" % utils.hexdump(self.card.reader.get_ATR(), short=True)
     
     def cmd_save_response(self, file_name, start = None, end = None):
         "Save the data in the last response to a file. start and end are optional"
@@ -268,7 +269,7 @@ class Cyberflex_Shell(Shell):
         sys.stdout = self.logger
         print "Logging to %s" % filename
         try:
-            self.logger.println( "# ATR of currently inserted card is: %s" % utils.hexdump(self.card.get_atr(), short=True) )
+            self.logger.println( "# ATR of currently inserted card is: %s" % utils.hexdump(self.card.reader.get_ATR(), short=True) )
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
@@ -341,8 +342,8 @@ class Cyberflex_Shell(Shell):
         if reader is None:
             reader = self.reader
         
-        card_object = utils.CommandLineArgumentHelper.connect_to(reader)
-        self.card = cards.new_card_object(card_object)
+        reader_object = readers.connect_to(reader)
+        self.card = cards.new_card_object(reader_object)
         
         self.unregister_commands(self, self.NOCARD_COMMANDS)
         self.register_commands(self, self.CARD_COMMANDS)

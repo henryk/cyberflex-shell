@@ -1,13 +1,4 @@
-import string, binascii, sys, re, getopt
-try:
-    import smartcard, smartcard.CardRequest
-except ImportError:
-    print >>sys.stderr, """Could not import smartcard module. Please install pyscard 
-from http://pyscard.sourceforge.net/
-If you can't install pyscard and want to continue using 
-pycsc you'll need to downgrade to SVN revision 246.
-"""
-    raise
+import string, binascii, sys, re, getopt, readers
 
 class CommandLineArgumentHelper:
     OPTIONS = "r:l"
@@ -15,65 +6,13 @@ class CommandLineArgumentHelper:
     exit_now = False
     reader = None
     
-    def list_readers():
-        for index, name in enumerate(smartcard.System.readers()):
-            print "%i: %s" % (index, name)
-    list_readers = staticmethod(list_readers)
-    
     def connect(self):
         "Open the connection to a card"
         
         if self.reader is None:
             self.reader = 0
         
-        return self.connect_to(self.reader)
-    
-    def connect_to(reader):
-        "Open the connection to a reader"
-        
-        readerObject = None
-        
-        if isinstance(reader, int) or reader.isdigit():
-            reader = int(reader)
-            readerObject = smartcard.System.readers()[reader]
-        else:
-            for r in smartcard.System.readers():
-                if str(r).startswith(reader):
-                    readerObject = r
-        
-        if readerObject is None:
-            readerObject = smartcard.System.readers()[0]
-        
-        print "Using reader: %s" % readerObject
-        unpatched = False
-        printed = False
-        while True:
-            try:
-                if not unpatched:
-                    cardrequest = smartcard.CardRequest.CardRequest( readers=[readerObject], timeout=0.1 )
-                else:
-                    cardrequest = smartcard.CardRequest.CardRequest( readers=[readerObject], timeout=1 )
-                
-                cardservice = cardrequest.waitforcard()
-                cardservice.connection.connect()
-                break
-            except TypeError:
-                unpatched = True
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except smartcard.Exceptions.CardRequestException:
-                if sys.exc_info()[1].message.endswith("Command timeout."):
-                    if not printed:
-                        print "Please insert card ..."
-                        printed = True
-                else:
-                    raise
-            except smartcard.Exceptions.NoCardException:
-                print "Card is mute or absent. Please retry."
-        
-        print "ATR:          %s" % hexdump(smartcard.util.toASCIIString(cardservice.connection.getATR()), short = True)
-        return cardservice
-    connect_to = staticmethod(connect_to)
+        return readers.connect_to(self.reader)
     
     def getopt(self, argv, opts="", long_opts=[]):
         "Wrapper around getopt.gnu_getopt. Handles common arguments, returns everything else."
@@ -85,7 +24,8 @@ class CommandLineArgumentHelper:
             if option in ("-r","--reader"):
                 self.reader = value
             elif option in ("-l","--list-readers"):
-                self.list_readers()
+                for i, (name, obj) in enumerate(readers.list_readers()):
+                    print "%i: %s" % (i,name)
                 self.exit_now = True
             else:
                 unrecognized.append( (option, value) )

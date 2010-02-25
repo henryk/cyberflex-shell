@@ -130,12 +130,8 @@ class Card:
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
     
-    def __init__(self, card):
-        if not hasattr(card, "connection"):
-            self.card = card
-        else:
-            self.card = card.connection
-            self.cardservice = card
+    def __init__(self, reader):
+        self.reader = reader
         
         self._i = 0
         self.last_apdu = None
@@ -198,19 +194,13 @@ class Card:
         "show_applications": cmd_show_applications,
     }
     
-    PROTOMAP = {
-        0: smartcard.scard.SCARD_PCI_T0,
-        1: smartcard.scard.SCARD_PCI_T1,
-    }
     def _real_send(self, apdu):
         apdu_binary = apdu.render()
         
         if DEBUG:
             print ">> " + utils.hexdump(apdu_binary, indent = 3)
         
-        apdu_bytes = map(lambda x: ord(x), apdu_binary)
-        data, sw1, sw2 = self.card.transmit(apdu_bytes, protocol=self.PROTOMAP[self.get_protocol()])
-        result_binary = map(lambda x: chr(x), data + [sw1,sw2])
+        result_binary = self.reader.transceive(apdu_binary)
         result = R_APDU(result_binary)
         
         self.last_apdu = apdu
@@ -258,20 +248,16 @@ class Card:
         if purpose is None: purpose = Card.PURPOSE_SUCCESS
         return self.match_statusword(self.STATUS_MAP[purpose], sw)
     
-    def _get_atr(card):
-        if hasattr(card, "connection"):
-            ATR = smartcard.util.toASCIIString(card.connection.getATR())
-        else:
-            ATR = smartcard.util.toASCIIString(card.getATR())
-        return ATR
+    def _get_atr(reader):
+        return reader.get_ATR()
     _get_atr = staticmethod(_get_atr)
     
     def get_atr(self):
-        return self._get_atr(self.card)
+        return self._get_atr(self.reader)
     
-    def can_handle(cls, card):
+    def can_handle(cls, reader):
         """Determine whether this class can handle a given card/connection object."""
-        ATR = cls._get_atr(card)
+        ATR = cls._get_atr(reader)
         def match_list(atr, list):
             for (knownatr, mask) in list:
                 if mask is None:
@@ -330,9 +316,6 @@ class Card:
             else:
                 return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
     
-    def get_protocol(self):
-        hresult, reader, state, protocol, atr = smartcard.scard.SCardStatus( self.card.component.hcard )
-        return ((protocol == smartcard.scard.SCARD_PROTOCOL_T0) and (0,) or (1,))[0]
     
     def get_driver_name(self):
         if len(self.DRIVER_NAME) > 1:
@@ -343,8 +326,6 @@ class Card:
     
     def close_card(self):
         "Disconnect from a card"
-        self.card.disconnect()
-        if hasattr(self, "cardservice"):
-            del self.cardservice
-        del self.card
+        self.reader.disconnect()
+        del self.reader
 

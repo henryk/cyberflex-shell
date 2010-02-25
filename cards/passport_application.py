@@ -1,5 +1,6 @@
 from generic_application import Application
-import struct, sha, binascii, os, datetime, sys
+import struct, binascii, os, datetime, sys
+from hashlib import sha1
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
 from generic_card import Card
@@ -111,7 +112,7 @@ class Passport_Application(Application):
         Returns: Ka + Kb
         Note: Does not adjust parity. Nobody uses that anyway ..."""
         D = Kseed + struct.pack(">i", c)
-        H = sha.sha(D).digest()
+        H = sha1(D).digest()
         Ka = H[0:8]
         Kb = H[8:16]
         return Ka + Kb
@@ -122,7 +123,7 @@ class Passport_Application(Application):
         if verbose:
             print "MRZ_information: '%s' + '%s' + '%s'" % (mrz2[0:10], mrz2[13:20], mrz2[21:28])
         MRZ_information = mrz2[0:10] + mrz2[13:20] + mrz2[21:28]
-        H = sha.sha(MRZ_information).digest()
+        H = sha1(MRZ_information).digest()
         Kseed = H[:16]
         if verbose:
             print "SHA1('%s')[:16] =\nKseed   = %s" % (MRZ_information, hexdump(Kseed))

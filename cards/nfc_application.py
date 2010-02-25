@@ -1,5 +1,5 @@
 from generic_application import Application
-import struct, sha, binascii, os, datetime, sys, utils
+import struct, binascii, os, datetime, sys, utils
 
 
 class NFC_Application(Application):

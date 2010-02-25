@@ -1,5 +1,5 @@
 from generic_application import Application
-import struct, sha, binascii, os, datetime, sys, time
+import struct, binascii, os, datetime, sys, time
 from iso_7816_4_card import ISO_7816_4_Card
 import utils, TLV_utils, generic_card
 

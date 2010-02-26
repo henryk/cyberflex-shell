@@ -11,7 +11,7 @@ def cipher(do_encrypt, cipherspec, key, data, iv = None):
     """Do a cryptographic operation.
     operation = do_encrypt ? encrypt : decrypt,
     cipherspec must be of the form "cipher-mode", or "cipher\""""
-    from Crypto.Cipher import DES3, DES, AES, IDEA, RC5
+    from Crypto.Cipher import DES3, DES, AES
     cipherparts = cipherspec.split("-")
     
     if len(cipherparts) > 2:

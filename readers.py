@@ -13,9 +13,31 @@ class Smartcard_Reader(object):
         return []
     list_readers = classmethod(list_readers)
     
-    def connect(self):
-        "Create a connection to this reader"
+    
+    _CONNECT_NO_CARD = object()
+    _CONNECT_MUTE_CARD = object()
+    _CONNECT_DONE = object()
+    def _internal_connect(self):
+        """Must implement the iterator protocol and yield 
+        one of self._CONNECT_NO_CARD, self._CONNECT_MUTE_CARD or self._CONNECT_DONE.
+        The iterator will not be called again after yielding _CONNECT_DONE, so it must
+        clean itself up before that."""
         raise NotImplementedError, "Please implement in a sub-class"
+    
+    def connect(self):
+        have_card = False
+        printed = False
+        for result in self._internal_connect():
+            if result is self._CONNECT_DONE:
+                have_card = True
+                break
+            elif result is self._CONNECT_MUTE_CARD:
+                print "Card is mute or absent. Please retry."
+            elif result is self._CONNECT_NO_CARD:
+                if not printed:
+                    print "Please insert card ..."
+                    printed = True
+        return have_card
     
     def get_ATR(self):
         "Get the ATR of the inserted card as a binary string"
@@ -38,12 +60,14 @@ class PCSC_Reader(Smartcard_Reader):
     name = property(lambda self: self._name, None, None, "The human readable name of the reader")
     
     def list_readers(cls):
-        return [ (str(r), cls(r)) for r in smartcard.System.readers() ]
+        try:
+            return [ (str(r), cls(r)) for r in smartcard.System.readers() ]
+        except smartcard.pcsc.PCSCExceptions.EstablishContextException:
+            return []
     list_readers = classmethod(list_readers)
     
-    def connect(self):
+    def _internal_connect(self):
         unpatched = False
-        printed = False
         while True:
             try:
                 if not unpatched:
@@ -53,24 +77,23 @@ class PCSC_Reader(Smartcard_Reader):
                 
                 self._cardservice = cardrequest.waitforcard()
                 self._cardservice.connection.connect()
-                break
+                del cardrequest
+                yield self._CONNECT_DONE
             except TypeError:
                 unpatched = True
             except (KeyboardInterrupt, SystemExit):
                 raise
             except smartcard.Exceptions.CardRequestException:
                 if sys.exc_info()[1].message.endswith("Command timeout."):
-                    if not printed:
-                        print "Please insert card ..."
-                        printed = True
+                    yield self._CONNECT_NO_CARD
                 else:
                     raise
             except smartcard.Exceptions.CardRequestTimeoutException:
-                if not printed:
-                    print "Please insert card ..."
-                    printed = True
+                yield self._CONNECT_NO_CARD
             except smartcard.Exceptions.NoCardException:
-                print "Card is mute or absent. Please retry."
+                yield self._CONNECT_MUTE_CARD
+            except smartcard.Exceptions.CardConnectionException:
+                yield self._CONNECT_MUTE_CARD
     
     def get_ATR(self):
         return smartcard.util.toASCIIString(self._cardservice.connection.getATR())
@@ -148,10 +171,10 @@ class ACR122_Reader(Smartcard_Reader):
                 if ord(response[2]) > 0:
                     return True
     
-    def connect(self):
-        # FIXME Add loop or something similar to PCSC_Reader.connect
+    def _internal_connect(self):
         self._parent.connect()
         self.pn532_acquire_card()
+        yield self._CONNECT_DONE
     
     def get_ATR(self):
         # FIXME Properly implement for PC/SC version 2

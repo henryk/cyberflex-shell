@@ -167,12 +167,13 @@ class ACR122_Reader(Smartcard_Reader):
             if ord(response[2]) > 0:
                 return True
             else:
-                response = self.pn532_transceive("\xd4\x4a\x01\x03")
+                response = self.pn532_transceive("\xd4\x4a\x01\x03\x00")
                 if ord(response[2]) > 0:
                     return True
     
     def _internal_connect(self):
         self._parent.connect()
+        self.pn532_transceive("\xd4\x32\x05\x00\x00\x00")
         self.pn532_acquire_card()
         yield self._CONNECT_DONE
     

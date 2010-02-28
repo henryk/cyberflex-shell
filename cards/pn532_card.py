@@ -11,6 +11,9 @@ class PN532_Virtual_Card(Card):
 
     APDU_TRANSCEIVE_PN532 = C_APDU(cla=0xff, ins=0, p1=0, p2=0)
     
+    # The ACR122 has a maximum response data size of 0xf8
+    APDU_READ_BINARY = C_APDU(cla=0, ins=0xb0, le=0xf8)
+    
     def cmd_pn532(self, *cmd):
         "Transmit a command to the PN532 and receive the response"
         result = self.pn532_transceive(binascii.unhexlify("".join("".join(cmd).split())))
@@ -25,6 +28,12 @@ class PN532_Virtual_Card(Card):
         self.cmd_pn532("d4 4a 01 00")
     
     def pn532_transceive(self, cmd):
+        if len(cmd) > 1:
+            if cmd[0] == "\xd4":
+                s = "pn532_prepare_command_%02X" % ord(cmd[1])
+                if hasattr(self, s): 
+                    cmd = getattr(self, s)(cmd)
+        
         if hasattr(self.reader, "pn532_transceive_raw"):
             return R_APDU(self.reader.pn532_transceive_raw(cmd))
         else:
@@ -80,6 +89,42 @@ class PN532_Virtual_Card(Card):
             result.append(t)
         
         result.append( "SAM status: %02X" % ord(response[-1]) )
+        return result
+    
+    def pn532_prepare_command_4A(self, cmd):
+        if len(cmd) > 3:
+            self._last_baudrate_polled = ord(cmd[3])
+        else:
+            self._last_baudrate_polled = None
+        return cmd
+    
+    def pn532_parse_response_4B(self, response):
+        response = map(ord, response)
+        numtg = response[0]
+        result = ["Targets detected: %i" % numtg]
+        pos = 1
+        last_pos = pos
+        
+        while pos < len(response):
+            if self._last_baudrate_polled == 0:
+                s = "Target %i: ISO 14443-A, SENS_RES: %02X %02X, SEL_RES: %02X" % \
+                    ( response[pos], response[pos+1], response[pos+2], response[pos+3] )
+                pos = pos + 4
+                if response[pos] > 0:
+                    s = s+", NFCID (%02X bytes): %s" % (response[pos], " ".join(map(lambda a: "%02X" % a, response[pos+1:(pos+1+response[pos])])))
+                    pos = pos + response[pos]
+                pos = pos + 1 # NFCID length does not count length byte
+                if len(response) > pos and response[pos] > 0:
+                    s = s+", ATS (%02X bytes): %s" % (response[pos], " ".join(map(lambda a: "%02X" % a, response[pos:(pos+response[pos])])))
+                    pos = pos + response[pos]
+                # ATS length does count length byte
+                
+                result.append(s)
+            
+            if last_pos == pos:
+                print "Implementation error, no advance, abort"
+                break
+        
         return result
     
     def can_handle(cls, reader):

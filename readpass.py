@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import utils, cards, TLV_utils, sys, binascii, time, traceback
+import utils, cards, TLV_utils, sys, binascii, time, traceback, readers
 
 OPTIONS = "iGW:R:"
 LONG_OPTIONS = ["interactive","no-gui", "write-files-basename", "read-files-basename"]
@@ -12,7 +12,7 @@ read_files = None
 start_interactive = False
 
 if __name__ == "__main__":
-    c = utils.CommandLineArgumentHelper()
+    c = readers.CommandLineArgumentHelper()
     
     (options, arguments) = c.getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
     

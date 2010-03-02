@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import utils, cards, TLV_utils, sys, binascii, time, traceback, re
+import utils, cards, TLV_utils, sys, binascii, time, traceback, re, readers
 
 def fingerprint_rfid(card):
     # Need RFID
@@ -180,7 +180,7 @@ def match_fingerprint(fingerprint, database="fingerprints.txt"):
     return ["\n".join(e) for e in results]
     
 if __name__ == "__main__":
-    c = utils.CommandLineArgumentHelper()
+    c = readers.CommandLineArgumentHelper()
     (options, arguments) = c.getopt(sys.argv[1:])
     
     card_object = c.connect()

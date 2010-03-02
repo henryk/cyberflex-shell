@@ -406,7 +406,7 @@ reader = None
 
 if __name__ == "__main__":
     
-    helper = utils.CommandLineArgumentHelper()
+    helper = readers.CommandLineArgumentHelper()
     
     (options, arguments) = helper.getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
     

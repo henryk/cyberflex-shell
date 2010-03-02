@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 
-import utils, cards, TLV_utils, sys, binascii, time, traceback, smartcard
+import utils, cards, TLV_utils, sys, binascii, time, traceback, smartcard, readers
 
 OPTIONS = "m:x:dD"
 LONG_OPTIONS = ["min-fid", "max-fid", "with-dirs", "dump-contents"]
@@ -35,7 +35,7 @@ def dump(data):
         pass
 
 if __name__ == "__main__":
-    c = utils.CommandLineArgumentHelper()
+    c = readers.CommandLineArgumentHelper()
     
     (options, arguments) = c.getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
     for option, value in options:

@@ -1,40 +1,4 @@
-import string, binascii, sys, re, getopt, readers
-
-class CommandLineArgumentHelper:
-    OPTIONS = "r:l"
-    LONG_OPTIONS = ["reader=", "list-readers"]
-    exit_now = False
-    reader = None
-    
-    def connect(self):
-        "Open the connection to a card"
-        
-        if self.reader is None:
-            self.reader = 0
-        
-        return readers.connect_to(self.reader)
-    
-    def getopt(self, argv, opts="", long_opts=[]):
-        "Wrapper around getopt.gnu_getopt. Handles common arguments, returns everything else."
-        (options, arguments) = getopt.gnu_getopt(sys.argv[1:], self.OPTIONS+opts, self.LONG_OPTIONS+long_opts)
-        
-        unrecognized = []
-        
-        for (option, value) in options:
-            if option in ("-r","--reader"):
-                self.reader = value
-            elif option in ("-l","--list-readers"):
-                for i, (name, obj) in enumerate(readers.list_readers()):
-                    print "%i: %s" % (i,name)
-                self.exit_now = True
-            else:
-                unrecognized.append( (option, value) )
-        
-        if self.exit_now:
-            sys.exit()
-        
-        return unrecognized, arguments
-
+import string, binascii, sys, re
 
 def represent_binary_fancy(len, value, mask = 0):
     result = []

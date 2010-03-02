@@ -7,6 +7,9 @@ If you can't install pyscard and want to continue using
 pycsc you'll need to downgrade to SVN revision 246.
 """
     raise
+
+import sys, utils, getopt
+
 class Smartcard_Reader(object):
     def list_readers(cls):
         "Return a list of tuples: (reader name, implementing object)"
@@ -219,10 +222,44 @@ def connect_to(reader):
     
     readerObject.connect()
     
-    from utils import hexdump
-
-    print "ATR:          %s" % hexdump(readerObject.get_ATR(), short = True)
+    print "ATR:          %s" % utils.hexdump(readerObject.get_ATR(), short = True)
     return readerObject
+
+class CommandLineArgumentHelper:
+    OPTIONS = "r:l"
+    LONG_OPTIONS = ["reader=", "list-readers"]
+    exit_now = False
+    reader = None
+    
+    def connect(self):
+        "Open the connection to a card"
+        
+        if self.reader is None:
+            self.reader = 0
+        
+        return connect_to(self.reader)
+    
+    def getopt(self, argv, opts="", long_opts=[]):
+        "Wrapper around getopt.gnu_getopt. Handles common arguments, returns everything else."
+        (options, arguments) = getopt.gnu_getopt(sys.argv[1:], self.OPTIONS+opts, self.LONG_OPTIONS+long_opts)
+        
+        unrecognized = []
+        
+        for (option, value) in options:
+            if option in ("-r","--reader"):
+                self.reader = value
+            elif option in ("-l","--list-readers"):
+                for i, (name, obj) in enumerate(list_readers()):
+                    print "%i: %s" % (i,name)
+                self.exit_now = True
+            else:
+                unrecognized.append( (option, value) )
+        
+        if self.exit_now:
+            sys.exit()
+        
+        return unrecognized, arguments
+
 
 if __name__ == "__main__":
     list_readers()

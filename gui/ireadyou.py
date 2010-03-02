@@ -4,11 +4,11 @@
 import gtk,gtk.glade,gobject
 import sys, os, time
 try:
-    import utils, TLV_utils, cards
+    import utils, TLV_utils, cards, readers
 except ImportError, e:
     try:
         sys.path.append(".")
-        import utils, TLV_utils, cards
+        import utils, TLV_utils, cards, readers
     except ImportError:
         raise e
 
@@ -360,7 +360,7 @@ OPTIONS = ""
 LONG_OPTIONS = []
 
 if __name__ == "__main__":
-##    c = utils.CommandLineArgumentHelper()
+##    c = readers.CommandLineArgumentHelper()
 ##    
 ##    (options, arguments) = c.getopt(sys.argv[1:], OPTIONS, LONG_OPTIONS)
 ##    

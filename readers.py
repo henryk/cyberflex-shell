@@ -8,7 +8,7 @@ pycsc you'll need to downgrade to SVN revision 246.
 """
     raise
 
-import sys, utils, getopt
+import sys, utils, getopt, binascii
 
 class Smartcard_Reader(object):
     def list_readers(cls):

@@ -1,4 +1,4 @@
-import string, binascii, sys, re
+import string, binascii, sys, re, inspect
 
 def represent_binary_fancy(len, value, mask = 0):
     result = []
@@ -454,7 +454,79 @@ class R_APDU(APDU):
     def render(self):
         "Return this APDU as a binary string"
         return self.data + self.sw
+
+class PN532_Frame(APDU):
+    """This is not really an ISO 7816 APDU, but close enough to use the same
+    class infrastructure."""
     
+    def __init__(self, *args, **kwargs):
+        """If applicable: redirect instance creation to a subclass"""
+        super(PN532_Frame, self).__init__(*args, **kwargs)
+        self._autosubclass()
+    
+    def _autosubclass(self):
+        """If a more appropriate subclass is known about, change __class__ to 
+        point to that class."""
+        
+        # Find all global classes that are a (possibly indirect) subclass of the current class
+        candidates = [ e for e in globals().values() 
+                      if inspect.isclass(e) and issubclass(e, self.__class__)
+                      and not e == self.__class__ ]
+        
+        # For each candidate: Find if it specifies any matching rules
+        # through class variables called MATCH_BY_* where * may be any field
+        # and if so, remove those classes that don't match. Also count the number
+        # of matches, to determine the best match
+        matches = {}
+        for candidate in candidates:
+            m = 0
+            for var in dir(candidate):
+                if var.startswith("MATCH_BY_"):
+                    fieldname = var[len("MATCH_BY_"):]
+                    if getattr(self, fieldname) == getattr(candidate, var):
+                        m = m + 1
+                    else:
+                        m = -1
+                        break
+            if m != -1:
+                matches[candidate] = m
+        
+        # Remove all candidates that don't have maximal score
+        max_score = max(matches.values())
+        candidates = [ k for k,v in matches.items() if v == max_score ]
+        
+        # If there is still more than one candidate remaining, randomly choose
+        # the first one.
+        if len(candidates) > 0:
+            c = candidates[0]
+            if c != self.__class__:
+                self.__class__ = c
+    
+    DIR = _make_byte_property("DIR"); dir = DIR
+    CMD = _make_byte_property("CMD"); cmd = CMD
+    
+    def parse(self, data):
+        self.dir = data[0]
+        self.cmd = data[1]
+        self.data = data[2:]
+    
+    def _format_fields(self):
+        fields = ["DIR", "CMD"]
+        return self._format_parts(fields)
+    
+    def render(self):
+        return chr(self.cmd) + chr(self.dir) + self.data
+    
+class PN532_Command(PN532_Frame):
+    MATCH_BY_dir = 0xd4
+
+class PN532_Response(PN532_Frame):
+    MATCH_BY_dir = 0xd5
+    
+class PN532_Response_InListPassiveTarget(PN532_Frame):
+    MATCH_BY_cmd = 0x4b
+    
+
 if __name__ == "__main__":
     response = """
 0000:  07 A0 00 00 00 03 00 00 07 00 07 A0 00 00 00 62  ...............b

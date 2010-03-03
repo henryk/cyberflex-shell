@@ -8,7 +8,7 @@ pycsc you'll need to downgrade to SVN revision 246.
 """
     raise
 
-import sys, utils, getopt, binascii
+import sys, utils, getopt, binascii, time
 
 class Smartcard_Reader(object):
     def list_readers(cls):
@@ -139,6 +139,7 @@ class ACR122_Reader(Smartcard_Reader):
     def __init__(self, parent):
         self._parent = parent
         self._name = self._parent.name+"-RFID"
+        self._last_ats = None
     
     def pn532_transceive_raw(self, command):
         c_apdu = "\xff\x00\x00\x00" + chr(len(command)) + command
@@ -166,23 +167,48 @@ class ACR122_Reader(Smartcard_Reader):
         self.pn532_transceive("\xd4\x32\x01\x00")
         self.pn532_transceive("\xd4\x32\x01\x01")
         
+        self._last_ats = []
+        
         response = self.pn532_transceive("\xd4\x4a\x01\x00")
-        if ord(response[2]) > 0:
+        r = utils.PN532_Frame(response)
+        r.parse_result(0)
+        if len(r.targets) > 0:
+            self._last_ats = r.targets.values()[0].ats
             return True
         else:
             response = self.pn532_transceive("\xd4\x4a\x01\x03\x00")
-            if ord(response[2]) > 0:
+            r = utils.PN532_Frame(response)
+            r.parse_result(3)
+            if len(r.targets) > 0:
                 return True
     
     def _internal_connect(self):
         self._parent.connect()
         self.pn532_transceive("\xd4\x32\x05\x00\x00\x00")
-        self.pn532_acquire_card()
-        yield self._CONNECT_DONE
+        while True:
+            if self.pn532_acquire_card():
+                yield self._CONNECT_DONE
+            else:
+                yield self._CONNECT_NO_CARD
+                time.sleep(1)
     
     def get_ATR(self):
         # FIXME Properly implement for PC/SC version 2
-        return "\x3b\x80\x80\x01\x01"
+        if len(self._last_ats) == 0:
+            return "\x3b\x80\x80\x01\x01"
+        else:
+            # Quick and dirty: Extract historical bytes from ATS
+            hist_bytes = []
+            if self._last_ats[0] > 1:
+                interface_bytes = 0
+                if self._last_ats[1] & 0x40: interface_bytes = interface_bytes + 1
+                if self._last_ats[1] & 0x20: interface_bytes = interface_bytes + 1
+                if self._last_ats[1] & 0x10: interface_bytes = interface_bytes + 1
+                hist_bytes = self._last_ats[ (2+interface_bytes): ]
+            if len(hist_bytes) > 15: hist_bytes = hist_bytes[:15]
+            atr = [0x3b, 0x80 + len(hist_bytes), 0x80, 0x01] + hist_bytes
+            atr.append( reduce(lambda a,b: a ^ b, atr) ^ 0x3b )
+            return "".join(map(chr, atr))
 
     def transceive(self, data):
         # FIXME Properly determine target number

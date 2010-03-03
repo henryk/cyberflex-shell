@@ -135,6 +135,7 @@ class Mifare_DESfire_Card(RFID_Card):
         data, returncode = self.wrap_native( binascii.a2b_hex( "".join("".join(args).split()) ) )
         print utils.hexdump(data)
     
-    COMMANDS = {
+    COMMANDS = dict(RFID_Card.COMMANDS)
+    COMMANDS.update({
         "wrap": cmd_wrap_native,
-    }
+    })

@@ -291,7 +291,8 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
     
     STOP_ATRS = list(Card.STOP_ATRS)
     STOP_ATRS.extend( [
-            ("3b8f8001804f0ca000000306......00000000..", None) # Contactless storage cards (PC/SC spec part 3 section 3.1.3.2.3
+            ("3b8f8001804f0ca000000306......00000000..", None), # Contactless storage cards (PC/SC spec part 3 section 3.1.3.2.3
+            ("3b8180018080", None), # Mifare DESfire (special case of contactless smartcard, ibid.)
         ] )
     
     COMMANDS = dict(Card.COMMANDS)

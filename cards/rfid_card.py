@@ -83,11 +83,12 @@ class Mifare_Ultralight_Card(Mifare_Card):
         ("3b8f8001804f0ca000000306..000300000000..", None),
     ]
 
-class Mifare_DESfire_Card(Mifare_Card):
+class Mifare_DESfire_Card(RFID_Card):
     DRIVER_NAME = ["Mifare DESfire"]
     ATRS = [
         ("3B8180018080", None)
     ]
+    STOP_ATRS = []
     
     STATUS_WORDS = {
         "\x91\x00": "Successful Operation",
@@ -130,6 +131,7 @@ class Mifare_DESfire_Card(Mifare_Card):
         return result.data, result.sw2
     
     def cmd_wrap_native(self, *args):
+        "Wrap a native DESfire command into an ISO 7816 APDU"
         data, returncode = self.wrap_native( binascii.a2b_hex( "".join("".join(args).split()) ) )
         print utils.hexdump(data)
     

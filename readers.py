@@ -229,8 +229,7 @@ class ACR122_Reader(Smartcard_Reader):
 
 
     def transceive(self, data):
-        # FIXME Properly determine target number
-        response = self.pn532_transceive("\xd4\x40\x01" + data)
+        response = self.pn532_transceive("\xd4\x40" + chr(self._current_target_number) + data)
         if response[2] != "\x00":
             # FIXME Proper error processing
             raise IOError, "Error while transceiving"

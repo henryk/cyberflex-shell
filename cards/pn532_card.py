@@ -99,31 +99,27 @@ class PN532_Virtual_Card(Card):
         return cmd
     
     def pn532_parse_response_4B(self, response):
-        response = map(ord, response)
-        numtg = response[0]
-        result = ["Targets detected: %i" % numtg]
-        pos = 1
-        last_pos = pos
+        r = utils.PN532_Response_InListPassiveTarget(data = response)
+        parse_ok = r.parse_result(self._last_baudrate_polled)
         
-        while pos < len(response):
-            if self._last_baudrate_polled == 0:
-                s = "Target %i: ISO 14443-A, SENS_RES: %02X %02X, SEL_RES: %02X" % \
-                    ( response[pos], response[pos+1], response[pos+2], response[pos+3] )
-                pos = pos + 4
-                if response[pos] > 0:
-                    s = s+", NFCID (%02X bytes): %s" % (response[pos], " ".join(map(lambda a: "%02X" % a, response[pos+1:(pos+1+response[pos])])))
-                    pos = pos + response[pos]
-                pos = pos + 1 # NFCID length does not count length byte
-                if len(response) > pos and response[pos] > 0:
-                    s = s+", ATS (%02X bytes): %s" % (response[pos], " ".join(map(lambda a: "%02X" % a, response[pos:(pos+response[pos])])))
-                    pos = pos + response[pos]
-                # ATS length does count length byte
+        result = ["Targets detected: %i" % len(r.targets)]
+        
+        if not parse_ok:
+            result.append("Parse error, results unreliable")
+        
+        for index, target in r.targets.items():
+            s = "Target %i: %s" % (index, target.type)
+            if target.type == utils.PN532_Target.TYPE_ISO14443A:
+                s = s + ", SENS_RES: %02X %02X, SEL_RES: %02X" % (
+                    target.sens_res[0], target.sens_res[1], target.sel_res)
+                if len(target.nfcid) > 0:
+                    s = s + ", NFCID (%i bytes): %s" % (
+                        len(target.nfcid), " ".join(map(lambda a: "%02X" % a, target.nfcid)))
+                if len(target.ats) > 0:
+                    s = s + ", ATS (%i bytes): %s" % (
+                        len(target.ats), " ".join(map(lambda a: "%02X" % a, target.ats)))
                 
                 result.append(s)
-            
-            if last_pos == pos:
-                print "Implementation error, no advance, abort"
-                break
         
         return result
     

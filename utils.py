@@ -124,7 +124,7 @@ def _unformat_hexdump(dump):
 
 def _make_byte_property(prop):
     "Make a byte property(). This is meta code."
-    return property(lambda self: getattr(self, "_"+prop, 0),
+    return property(lambda self: getattr(self, "_"+prop, getattr(self, "_DEFAULT_"+prop, 0)),
             lambda self, value: self._setbyte(prop, value), 
             lambda self: delattr(self, "_"+prop),
             "The %s attribute of the APDU" % prop)
@@ -177,7 +177,7 @@ class APDU(object):
                 setattr(self, name, value)
     
     def _getdata(self):
-        return self._data
+        return getattr(self, "_data", [])
     def _setdata(self, value): 
         if isinstance(value, str):
             self._data = "".join([e for e in value])
@@ -491,24 +491,30 @@ class PN532_Frame(APDU):
             if m != -1:
                 matches[candidate] = m
         
-        # Remove all candidates that don't have maximal score
-        max_score = max(matches.values())
-        candidates = [ k for k,v in matches.items() if v == max_score ]
-        
-        # If there is still more than one candidate remaining, randomly choose
-        # the first one.
-        if len(candidates) > 0:
-            c = candidates[0]
-            if c != self.__class__:
-                self.__class__ = c
+        if len(matches) > 0:
+            # Remove all candidates that don't have maximal score
+            max_score = max(matches.values())
+            candidates = [ k for k,v in matches.items() if v == max_score ]
+            
+            # If there is still more than one candidate remaining, randomly choose
+            # the first one.
+            if len(candidates) > 0:
+                c = candidates[0]
+                if c != self.__class__:
+                    self.__class__ = c
     
     DIR = _make_byte_property("DIR"); dir = DIR
     CMD = _make_byte_property("CMD"); cmd = CMD
     
     def parse(self, data):
-        self.dir = data[0]
-        self.cmd = data[1]
-        self.data = data[2:]
+        if len(data) > 0:
+            self.dir = data[0]
+        
+        if len(data) > 1:
+            self.cmd = data[1]
+        
+        if len(data) > 2:
+            self.data = data[2:]
     
     def _format_fields(self):
         fields = ["DIR", "CMD"]
@@ -518,13 +524,54 @@ class PN532_Frame(APDU):
         return chr(self.cmd) + chr(self.dir) + self.data
     
 class PN532_Command(PN532_Frame):
-    MATCH_BY_dir = 0xd4
+    MATCH_BY_dir = _DEFAULT_DIR = 0xd4
 
 class PN532_Response(PN532_Frame):
-    MATCH_BY_dir = 0xd5
+    MATCH_BY_dir = _DEFAULT_DIR = 0xd5
+
+class PN532_Target(object):
+    TYPE_ISO14443A = "ISO 14443-A"
+    def __init__(self, type):
+        self.type = type
     
-class PN532_Response_InListPassiveTarget(PN532_Frame):
-    MATCH_BY_cmd = 0x4b
+class PN532_Response_InListPassiveTarget(PN532_Response):
+    MATCH_BY_cmd = _DEFAULT_CMD = 0x4b
+    
+    def parse_result(self, baudrate_polled):
+        response = map(ord, self.data)
+        self.targets = {}
+        pos = 1
+        last_pos = pos
+        
+        while pos < len(response):
+            
+            if baudrate_polled == 0:
+                target = PN532_Target(PN532_Target.TYPE_ISO14443A)
+                self.targets[response[pos]] = target
+                
+                target.sens_res = response[(pos+1):(pos+3)]
+                target.sel_res = response[pos+3]
+                
+                pos = pos + 4
+                if response[pos] > 0:
+                    target.nfcid = response[pos+1:(pos+1+response[pos])]
+                    pos = pos + response[pos]
+                else:
+                    target.nfcid = []
+                pos = pos + 1 # NFCID length does not count length byte
+                
+                if len(response) > pos and response[pos] > 0:
+                    target.ats = response[pos:(pos+response[pos])]
+                    pos = pos + response[pos]
+                else:
+                    target.ats = []
+                # ATS length does count length byte
+            
+            if last_pos == pos:
+                return False
+        
+        return True
+
     
 
 if __name__ == "__main__":

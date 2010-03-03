@@ -162,17 +162,17 @@ class ACR122_Reader(Smartcard_Reader):
         return "".join(response[:-2])
     
     def pn532_acquire_card(self):
-        response = self.pn532_transceive("\xd4\x04")
-        if ord(response[4]) > 0:
+        # Turn antenna power off and on to forcefully reinitialize the card
+        self.pn532_transceive("\xd4\x32\x01\x00")
+        self.pn532_transceive("\xd4\x32\x01\x01")
+        
+        response = self.pn532_transceive("\xd4\x4a\x01\x00")
+        if ord(response[2]) > 0:
             return True
         else:
-            response = self.pn532_transceive("\xd4\x4a\x01\x00")
+            response = self.pn532_transceive("\xd4\x4a\x01\x03\x00")
             if ord(response[2]) > 0:
                 return True
-            else:
-                response = self.pn532_transceive("\xd4\x4a\x01\x03\x00")
-                if ord(response[2]) > 0:
-                    return True
     
     def _internal_connect(self):
         self._parent.connect()

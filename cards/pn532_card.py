@@ -120,6 +120,15 @@ class PN532_Virtual_Card(Card):
                         len(target.ats), " ".join(map(lambda a: "%02X" % a, target.ats)))
                 
                 result.append(s)
+            elif target.type == utils.PN532_Target.TYPE_ISO14443B:
+                s = s + ", ATQB: %s" % (
+                    " ".join(map(lambda a: "%02X" % a, target.atqb)) )
+                
+                if len(target.attrib_res) > 0:
+                    s = s + ", ATTRIB_RES (%i bytes): %s" % (
+                        len(target.attrib_res), " ".join(map(lambda a: "%02X" % a, target.attrib_res)))
+                
+                result.append(s)
         
         return result
     

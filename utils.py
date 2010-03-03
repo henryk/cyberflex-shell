@@ -531,6 +531,7 @@ class PN532_Response(PN532_Frame):
 
 class PN532_Target(object):
     TYPE_ISO14443A = "ISO 14443-A"
+    TYPE_ISO14443B = "ISO 14443-B"
     def __init__(self, type):
         self.type = type
     
@@ -566,6 +567,20 @@ class PN532_Response_InListPassiveTarget(PN532_Response):
                 else:
                     target.ats = []
                 # ATS length does count length byte
+            
+            elif baudrate_polled == 3:
+                target = PN532_Target(PN532_Target.TYPE_ISO14443B)
+                self.targets[response[pos]] = target
+                
+                target.atqb = response[(pos+1):(pos+13)]
+                pos = pos + 13
+                
+                if response[pos] > 0:
+                    target.attrib_res = response[pos+1:(pos+1+response[pos])]
+                    pos = pos + response[pos]
+                else:
+                    target.attrib_res = []
+                pos = pos + 1 # ATTRIB_RES length does not count the length byte
             
             if last_pos == pos:
                 return False

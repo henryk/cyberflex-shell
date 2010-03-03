@@ -124,7 +124,7 @@ def _unformat_hexdump(dump):
 
 def _make_byte_property(prop):
     "Make a byte property(). This is meta code."
-    return property(lambda self: getattr(self, "_"+prop, getattr(self, "_DEFAULT_"+prop, 0)),
+    return property(lambda self: getattr(self, "_"+prop, getattr(self, "_DEFAULT_"+prop, None)),
             lambda self, value: self._setbyte(prop, value), 
             lambda self: delattr(self, "_"+prop),
             "The %s attribute of the APDU" % prop)
@@ -177,7 +177,7 @@ class APDU(object):
                 setattr(self, name, value)
     
     def _getdata(self):
-        return getattr(self, "_data", [])
+        return getattr(self, "_data", "")
     def _setdata(self, value): 
         if isinstance(value, str):
             self._data = "".join([e for e in value])
@@ -444,6 +444,9 @@ class R_APDU(APDU):
     
     def parse(self, apdu):
         "Parse a full response APDU and assign the values to our object, overwriting whatever there was."
+        if len(apdu) == 0: # To be filled in later
+            return
+        
         self.SW = apdu[-2:]
         self.data = apdu[:-2]
     

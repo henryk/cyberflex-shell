@@ -194,6 +194,17 @@ class ACR122_Reader(Smartcard_Reader):
                 yield self._CONNECT_NO_CARD
                 time.sleep(1)
     
+    @staticmethod
+    def _extract_historical_bytes_from_ats(ats):
+        hist_bytes = []
+        if ats[0] > 1:
+            interface_bytes = 0
+            if ats[1] & 0x40: interface_bytes = interface_bytes + 1
+            if ats[1] & 0x20: interface_bytes = interface_bytes + 1
+            if ats[1] & 0x10: interface_bytes = interface_bytes + 1
+            hist_bytes = ats[ (2+interface_bytes): ]
+        return hist_bytes
+
     def get_ATR(self):
         # FIXME Properly implement for PC/SC version 2
         if self._current_target is None: return ""
@@ -204,12 +215,7 @@ class ACR122_Reader(Smartcard_Reader):
             if len(self._current_target.ats) > 0:
                 # Quick and dirty: Extract historical bytes from ATS
                 ats = self._current_target.ats
-                if ats[0] > 1:
-                    interface_bytes = 0
-                    if ats[1] & 0x40: interface_bytes = interface_bytes + 1
-                    if ats[1] & 0x20: interface_bytes = interface_bytes + 1
-                    if ats[1] & 0x10: interface_bytes = interface_bytes + 1
-                    hist_bytes = ats[ (2+interface_bytes): ]
+                hist_bytes = self._extract_historical_bytes_from_ats(ats)
                 if len(hist_bytes) > 15: hist_bytes = hist_bytes[:15]
             else:
                 return "\x3b\x80\x80\x01\x01"
@@ -229,6 +235,54 @@ class ACR122_Reader(Smartcard_Reader):
 
 
     def transceive(self, data):
+        try:
+            command = utils.C_APDU(data)
+            result = []
+            error = None
+            response = None
+            
+            if command.cla == 0xff and command.ins == 0xca:
+                if command.p1 == 0x00: 
+                    # Get UID/PUPI
+                    if self._current_target is None: 
+                        error = "\x6a\x81"
+                    elif self._current_target.type == utils.PN532_Target.TYPE_ISO14443A:
+                        result = self._current_target.nfcid
+                    elif self._current_target.type == utils.PN532_Target.TYPE_ISO14443B:
+                        result = self._current_target.atqb[1:5]
+                    else:
+                        error = "\x6a\x81"
+                
+                elif command.p1 == 0x01:
+                    # Get ATS historical bytes
+                    if self._current_target is None: 
+                        error = "\x6a\x81"
+                    elif self._current_target.type == utils.PN532_Target.TYPE_ISO14443A:
+                        ats = self._current_target.ats
+                        result = self._extract_historical_bytes_from_ats(ats)
+                    else:
+                        error = "\x6a\x81"
+                
+                else:
+                    error = "\x6a\x81"
+                
+                if error is not None:
+                    response = utils.R_APDU(error)
+                else:
+                    if command.le is 0 or command.le == len(result):
+                        response = utils.R_APDU(data=result, sw1=0x90, sw2=0)
+                    elif command.le < len(result):
+                        response = utils.R_APDU(sw1=0x6c, sw2=len(result))
+                    elif command.le > len(result):
+                        response = utils.R_APDU(data=result + [0] * (command.le-len(result)),
+                            sw1=0x62, sw2=0x82)
+                
+                if response is not None:
+                    return response.render()
+        except:
+            # Just go on and try to process the data normally
+            pass
+        
         response = self.pn532_transceive("\xd4\x40" + chr(self._current_target_number) + data)
         if response[2] != "\x00":
             # FIXME Proper error processing

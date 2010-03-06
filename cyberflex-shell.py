@@ -227,6 +227,7 @@ class Cyberflex_Shell(Shell):
 
     def _clear_sw(self):
         self.card.sw_changed = False
+        self.card.last_delta = None
     
     def do_fancy_apdu(self, *args):
         apdu = None
@@ -307,8 +308,15 @@ class Cyberflex_Shell(Shell):
             self.stop_log()
 
     def _print_sw(self):
+        to_print = []
         if self.card.sw_changed:
-            print self.card.decode_statusword()
+            to_print.append(self.card.decode_statusword())
+        
+        if self.card.last_delta is not None:
+            to_print.append("%0.03gs" % self.card.last_delta)
+        
+        if to_print:
+            print ", ".join(to_print)
     
     def _find_driver_class(driver_name):
         for i in dir(cards):

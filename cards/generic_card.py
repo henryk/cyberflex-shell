@@ -1,5 +1,5 @@
 import smartcard
-import TLV_utils, crypto_utils, utils, binascii, fnmatch, re
+import TLV_utils, crypto_utils, utils, binascii, fnmatch, re, time
 from utils import C_APDU, R_APDU
 
 DEBUG = True
@@ -138,6 +138,8 @@ class Card:
         self.last_sw = None
         self.last_result = None
         self.sw_changed = False
+        self._last_start = None
+        self.last_delta = None
     
     def post_merge(self):
         ## Called after cards.__init__.Cardmultiplexer._merge_attributes
@@ -229,6 +231,9 @@ class Card:
         if DEBUG:
             print "%s\nBeginning transaction %i" % ('-'*80, self._i)
         
+        self.last_delta = None
+        self._last_start = time.time()
+        
         if hasattr(self, "before_send"):
             apdu = self.before_send(apdu)
         
@@ -236,6 +241,10 @@ class Card:
         
         if hasattr(self, "after_send"):
             result = self.after_send(result)
+        
+        if self._last_start is not None:
+            self.last_delta = time.time() - self._last_start
+            self._last_start = None
         
         if DEBUG:
             print "Ending transaction %i\n%s\n" % (self._i, '-'*80)

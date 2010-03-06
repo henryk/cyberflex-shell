@@ -44,6 +44,7 @@ class Card_with_ls:
                 response_EF[EF] = self.select_file(0x02, self.SELECT_P2, EF)
         
         self.sw_changed = False
+        self.last_delta = None
         
         if "-l" in options:
             print self._ls_l_template % {"name": "Name", "type": "Type", "size": "Size"}
@@ -127,6 +128,7 @@ class Card_with_read_binary:
         
         if had_one: ## If there was at least one successful pass, ignore any error SW. It probably only means "end of file"
             self.sw_changed = False
+            self.last_delta = None
         
         return contents, result.sw
     

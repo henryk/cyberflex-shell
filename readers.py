@@ -220,7 +220,7 @@ class ACR122_Reader(Smartcard_Reader):
             else:
                 return "\x3b\x80\x80\x01\x01"
         elif self._current_target.type == utils.PN532_Target.TYPE_ISO14443B:
-            hist_bytes = self._current_target.atqb[5:9] + self._current_target.atqb[5:12]
+            hist_bytes = self._current_target.atqb[5:12]
             if len(self._current_target.attrib_res) > 0:
                 hist_bytes.append(self._current_target.attrib_res[0] & 0xf0)
             else:

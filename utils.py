@@ -458,6 +458,20 @@ class R_APDU(APDU):
         "Return this APDU as a binary string"
         return self.data + self.sw
 
+class Raw_APDU(APDU):
+    """Raw APDU that doesn't do any parsing"""
+    
+    def parse(self, apdu):
+        "'Parse' the apdu and copy the values to this object"
+        self.data = apdu
+    
+    def render(self):
+        "Return this APDU as a binary string"
+        return self.data
+    
+    def _format_fields(self):
+        return ""
+
 class PN532_Frame(APDU):
     """This is not really an ISO 7816 APDU, but close enough to use the same
     class infrastructure."""

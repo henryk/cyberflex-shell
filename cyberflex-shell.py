@@ -218,7 +218,7 @@ class Cyberflex_Shell(Shell):
         "Parse a fancy APDU and print the result"
         apdu = utils.C_APDU.parse_fancy_apdu(*args)
         data = apdu.render()
-	if hasattr(self, "card"):
+        if hasattr(self, "card"):
             self.card.last_result = utils.R_APDU(data+"\x00\x00")
         print utils.hexdump(data)
     
@@ -230,6 +230,7 @@ class Cyberflex_Shell(Shell):
         self.card.last_delta = None
     
     def do_fancy_apdu(self, *args):
+        "Parse and transmit a fancy APDU"
         apdu = None
         try:
             apdu = utils.C_APDU.parse_fancy_apdu(*args)
@@ -239,13 +240,23 @@ class Cyberflex_Shell(Shell):
         if apdu is not None:
             return self.do_apdu(apdu)
     
-    def do_raw_apdu(self, *args):
+    def do_normal_apdu(self, *args):
+        "Transmit an APDU"
         apdu_string = "".join(args)
         if not utils.C_APDU._apduregex.match(apdu_string):
             raise NotImplementedError
         
         apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
         apdu = utils.C_APDU(apdu_binary)
+        
+        return self.do_apdu(apdu)
+    
+    def do_raw_apdu(self, *args):
+        "Transmit a raw data string as an APDU"
+        apdu_string = "".join(args)
+        
+        apdu_binary = binascii.a2b_hex("".join(apdu_string.split()))
+        apdu = utils.Raw_APDU(apdu_binary)
         
         return self.do_apdu(apdu)
     
@@ -381,6 +392,7 @@ class Cyberflex_Shell(Shell):
         "reconnect": cmd_reconnect,
         "driver_load": cmd_loaddriver,
         "driver_unload": cmd_unloaddriver,
+        "raw": do_raw_apdu,
         "run_script": cmd_runscript,
     }
     

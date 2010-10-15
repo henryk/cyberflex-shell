@@ -319,7 +319,7 @@ class C_APDU(Command_Frame,APDU):
     _apduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}$', re.I)
     _fancyapduregex = re.compile(r'^\s*([0-9a-f]{2}\s*){4,}\s*((xx|yy)\s*)?(([0-9a-f]{2}|:|\)|\(|\[|\])\s*)*$', re.I)
     @staticmethod
-    def parse_fancy_apdu(*args):
+    def parse_fancy(*args):
         apdu_string = " ".join(args)
         if not C_APDU._fancyapduregex.match(apdu_string):
             raise ValueError

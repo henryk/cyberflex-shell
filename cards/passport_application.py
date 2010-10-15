@@ -53,7 +53,7 @@ class Passport_Security_Environment(TCOS_Security_Environment):
             new_apdu.append("8E()00")
             
             new_apdu_string = "".join(new_apdu)
-            apdu = C_APDU.parse_fancy_apdu(new_apdu_string)
+            apdu = C_APDU.parse_fancy(new_apdu_string)
         
         return TCOS_Security_Environment.before_send(self, apdu)
     

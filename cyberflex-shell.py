@@ -216,7 +216,7 @@ class Cyberflex_Shell(Shell):
     
     def cmd_fancy(self, *args):
         "Parse a fancy APDU and print the result"
-        apdu = utils.C_APDU.parse_fancy_apdu(*args)
+        apdu = utils.C_APDU.parse_fancy(*args)
         data = apdu.render()
         if hasattr(self, "card"):
             self.card.last_result = utils.R_APDU(data+"\x00\x00")
@@ -233,7 +233,7 @@ class Cyberflex_Shell(Shell):
         "Parse and transmit a fancy APDU"
         apdu = None
         try:
-            apdu = utils.C_APDU.parse_fancy_apdu(*args)
+            apdu = utils.C_APDU.parse_fancy(*args)
         except ValueError:
             raise NotImplementedError
         

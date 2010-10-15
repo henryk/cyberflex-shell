@@ -88,9 +88,7 @@ class Card:
         
         self._i = 0
         self.last_apdu = None
-        self.last_sw = None
         self.last_result = None
-        self.sw_changed = False
         self._last_start = None
         self.last_delta = None
     
@@ -138,11 +136,9 @@ class Card:
             print ">> " + utils.hexdump(apdu_binary, indent = 3)
         
         result_binary = self.reader.transceive(apdu_binary)
-        result = R_APDU(result_binary)
+        result = apdu.RESPONSE_CLASS(result_binary)
         
         self.last_apdu = apdu
-        self.last_sw = result.sw
-        self.sw_changed = True
         
         if DEBUG:
             print "<< " + utils.hexdump(result_binary, indent = 3)
@@ -237,29 +233,6 @@ class Card:
                 return value
         return None
     match_statusword = staticmethod(match_statusword)
-    
-    def decode_statusword(self):
-        if self.last_sw is None:
-            return "No command executed so far"
-        else:
-            retval = None
-            
-            matched_sw = self.match_statusword(self.STATUS_WORDS.keys(), self.last_sw)
-            if matched_sw is not None:
-                retval = self.STATUS_WORDS.get(matched_sw)
-                if isinstance(retval, str):
-                    retval = retval % { "SW1": ord(self.last_sw[0]), 
-                        "SW2": ord(self.last_sw[1]) }
-                    
-                elif callable(retval):
-                    retval = retval( ord(self.last_sw[0]),
-                        ord(self.last_sw[1]) )
-            
-            if retval is None:
-                return "Unknown SW (SW %s)" % binascii.b2a_hex(self.last_sw)
-            else:
-                return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
-    
     
     def get_driver_name(self):
         if len(self.DRIVER_NAME) > 1:

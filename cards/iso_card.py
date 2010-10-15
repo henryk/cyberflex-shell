@@ -85,10 +85,47 @@ class ISO_Card(Card):
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
     
+    def __init__(self, reader):
+        Card.__init__(self, reader)
+        self.last_sw = None
+        self.sw_changed = False
+    
     def post_merge(self):
         ## Called after cards.__init__.Cardmultiplexer._merge_attributes
         self.TLV_OBJECTS[TLV_utils.context_FCP][0x84] = (self._decode_df_name, "DF name")
         self.TLV_OBJECTS[TLV_utils.context_FCI][0x84] = (self._decode_df_name, "DF name")
+    
+    def decode_statusword(self):
+        if self.last_sw is None:
+            return "No command executed so far"
+        else:
+            retval = None
+            
+            matched_sw = self.match_statusword(self.STATUS_WORDS.keys(), self.last_sw)
+            if matched_sw is not None:
+                retval = self.STATUS_WORDS.get(matched_sw)
+                if isinstance(retval, str):
+                    retval = retval % { "SW1": ord(self.last_sw[0]), 
+                        "SW2": ord(self.last_sw[1]) }
+                    
+                elif callable(retval):
+                    retval = retval( ord(self.last_sw[0]),
+                        ord(self.last_sw[1]) )
+            
+            if retval is None:
+                return "Unknown SW (SW %s)" % binascii.b2a_hex(self.last_sw)
+            else:
+                return "%s (SW %s)" % (retval, binascii.b2a_hex(self.last_sw))
+    
+    def _real_send(self, apdu):
+        result = Card._real_send(self, apdu)
+        
+        self.last_sw = result.sw
+        self.sw_changed = True
+        
+        return result
+
+    
     
     def verify_pin(self, pin_number, pin_value):
         apdu = C_APDU(self.APDU_VERIFY_PIN, P2 = pin_number,

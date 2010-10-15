@@ -230,10 +230,13 @@ class Cyberflex_Shell(Shell):
         self.card.last_delta = None
     
     def do_fancy_apdu(self, *args):
-        "Parse and transmit a fancy APDU"
+        "Parse and transmit a fancy command"
         apdu = None
         try:
-            apdu = utils.C_APDU.parse_fancy(*args)
+            if hasattr(self.card.COMMAND_CLASS, "parse_fancy"):
+                apdu = self.card.COMMAND_CLASS.parse_fancy(*args)
+            else:
+                apdu = self.card.COMMAND_CLASS(*args)
         except ValueError:
             raise NotImplementedError
         

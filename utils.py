@@ -228,6 +228,11 @@ class Transmission_Frame(object):
     # Stub for implementation in subclasses
     # Semantics should be: c=a.append(b) <=> c.data == a.data + b.data and c.status == b.status
     append = None
+    
+    @classmethod
+    def parse_fancy(cls, *args):
+        argstring = "".join((" ".join(args)).split())
+        return cls(binascii.unhexlify(argstring))
 
 class Command_Frame(Transmission_Frame):
     pass

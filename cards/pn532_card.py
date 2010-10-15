@@ -1,13 +1,13 @@
 import utils, binascii
-from generic_card import *
+from iso_card import *
 
-class PN532_Virtual_Card(Card):
+class PN532_Virtual_Card(ISO_Card):
     # This is a virtual card that is enabled for the ACS ACR reader that 
     # contains a PN532 module
     DRIVER_NAME = ["PN532"]
 
-    STATUS_WORDS = dict(Card.STATUS_WORDS)
-    COMMANDS = dict(Card.COMMANDS)
+    STATUS_WORDS = dict(ISO_Card.STATUS_WORDS)
+    COMMANDS = dict(ISO_Card.COMMANDS)
 
     APDU_TRANSCEIVE_PN532 = C_APDU(cla=0xff, ins=0, p1=0, p2=0)
     

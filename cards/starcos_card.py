@@ -12,7 +12,7 @@ class Starcos_Card(ISO_7816_4_Card):
         else:
             return self.select_file(0x00, 0x0C, fid)
 
-    ATRS = list(Card.ATRS)
+    ATRS = list(ISO_Card.ATRS)
     ATRS.extend( [
             ("3bb794008131fe6553504b32339000d1", None),
         ] )

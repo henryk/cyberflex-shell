@@ -3,8 +3,7 @@ import struct, binascii, os, datetime, sys
 from hashlib import sha1
 from utils import hexdump, C_APDU
 from tcos_card import SE_Config, TCOS_Security_Environment
-from generic_card import Card
-from iso_7816_4_card import ISO_7816_4_Card
+from iso_7816_4_card import ISO_7816_4_Card, ISO_Card, Card
 import crypto_utils, tcos_card, TLV_utils, generic_card
 from TLV_utils import identifier
 

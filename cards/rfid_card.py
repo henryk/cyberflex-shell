@@ -1,8 +1,8 @@
 import utils
-from generic_card import *
+from iso_card import *
 import building_blocks
 
-class RFID_Card(Card):
+class RFID_Card(ISO_Card):
     DRIVER_NAME = ["RFID"]
     APDU_GET_UID = utils.C_APDU(CLA=0xff, INS=0xCA, p1=0, p2=0, Le=0)
     
@@ -32,7 +32,7 @@ class RFID_Card(Card):
         "get_uid": cmd_get_uid,
     }
     
-    STATUS_WORDS = dict(Card.STATUS_WORDS)
+    STATUS_WORDS = dict(ISO_Card.STATUS_WORDS)
     STATUS_WORDS.update( {
         "\x62\x82": "End of file (or UID) reached before Le bytes",
         "\x67\x00": "Wrong Length",

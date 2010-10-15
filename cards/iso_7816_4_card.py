@@ -1,6 +1,6 @@
 import sys;sys.path.append(".."); sys.path.append(".")
 import TLV_utils
-from generic_card import *
+from iso_card import *
 from generic_application import Application
 import building_blocks
 
@@ -156,7 +156,7 @@ class iso_df(iso_node):
         if node not in self._children:
             self._children.append(node)
 
-class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
+class ISO_7816_4_Card(building_blocks.Card_with_read_binary,ISO_Card):
     APDU_SELECT_APPLICATION = C_APDU(ins=0xa4,p1=0x04)
     APDU_SELECT_FILE = C_APDU(ins=0xa4, le=0)
     APDU_READ_BINARY = C_APDU(ins=0xb0,le=0)
@@ -284,18 +284,18 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
         aid = self.resolve_symbolic_aid(application)
         Application.load_applications(self, aid)
     
-    ATRS = list(Card.ATRS)
+    ATRS = list(ISO_Card.ATRS)
     ATRS.extend( [
             (".*", None),   ## For now we accept any card
         ] )
     
-    STOP_ATRS = list(Card.STOP_ATRS)
+    STOP_ATRS = list(ISO_Card.STOP_ATRS)
     STOP_ATRS.extend( [
             ("3b8f8001804f0ca000000306......00000000..", None), # Contactless storage cards (PC/SC spec part 3 section 3.1.3.2.3
             ("3b8180018080", None), # Mifare DESfire (special case of contactless smartcard, ibid.)
         ] )
     
-    COMMANDS = dict(Card.COMMANDS)
+    COMMANDS = dict(ISO_Card.COMMANDS)
     COMMANDS.update(building_blocks.Card_with_read_binary.COMMANDS)
     COMMANDS.update( {
         "select_application": cmd_selectapplication,
@@ -307,7 +307,7 @@ class ISO_7816_4_Card(building_blocks.Card_with_read_binary,Card):
         "next_record": cmd_next_record,
         } )
 
-    STATUS_WORDS = dict(Card.STATUS_WORDS)
+    STATUS_WORDS = dict(ISO_Card.STATUS_WORDS)
     STATUS_WORDS.update( {
         "62??": "Warning, State of non-volatile memory unchanged",
         "63??": "Warning, State of non-volatile memory changed",

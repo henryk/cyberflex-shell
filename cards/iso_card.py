@@ -125,6 +125,20 @@ class ISO_Card(Card):
         
         return result
 
+    def _send_with_retry(self, apdu):
+        result = self._real_send(apdu)
+        
+        if self.check_sw(result.sw, self.PURPOSE_GET_RESPONSE):
+            ## Need to call GetResponse
+            gr_apdu = C_APDU(self.COMMAND_GET_RESPONSE, le = result.sw2, cla=apdu.cla) # FIXME
+            result = R_APDU(self._real_send(gr_apdu))
+        elif self.check_sw(result.sw, self.PURPOSE_RETRY) and apdu.Le == 0:
+            ## Retry with correct Le
+            gr_apdu = C_APDU(apdu, le = result.sw2)
+            result = R_APDU(self._real_send(gr_apdu))
+        
+        return result
+    
     
     
     def verify_pin(self, pin_number, pin_value):

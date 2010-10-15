@@ -5,7 +5,8 @@ from utils import C_APDU, R_APDU
 
 class ISO_Card(Card):
     DRIVER_NAME = ["ISO"]
-    APDU_GET_RESPONSE = C_APDU(ins=0xc0)
+    COMMAND_GET_RESPONSE = C_APDU(ins=0xc0)
+    
     APDU_VERIFY_PIN = C_APDU(ins=0x20)
     
     ## Map for check_sw()

@@ -36,3 +36,12 @@ class APDUCase1Tests(unittest.TestCase):
         
         self.assertEqual(self.a4.render(), a4_2.render())
 
+class APDUChainTests(unittest.TestCase):
+    
+    def testChain(self):
+        a = utils.R_APDU("abcd\x61\x04")
+        b = utils.R_APDU("efgh\x90\x00")
+        
+        c = a.append(b)
+        
+        self.assertEqual("abcdefgh\x90\x00", c.render())

@@ -224,6 +224,10 @@ class Transmission_Frame(object):
             parts.append("data=%r" % self.data)
         
         return "%s(%s)" % (self.__class__.__name__, ", ".join(parts))
+    
+    # Stub for implementation in subclasses
+    # Semantics should be: c=a.append(b) <=> c.data == a.data + b.data and c.status == b.status
+    append = None
 
 class Command_Frame(Transmission_Frame):
     pass
@@ -472,6 +476,9 @@ class R_APDU(Response_Frame,APDU):
     def render(self):
         "Return this APDU as a binary string"
         return self.data + self.sw
+    
+    def append(self, other):
+        return R_APDU(self.data + other.data + other.sw)
 
 APDU.COMMAND_CLASS = C_APDU
 APDU.RESPONSE_CLASS = R_APDU

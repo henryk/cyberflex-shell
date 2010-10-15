@@ -147,10 +147,16 @@ class Card:
     def _send_with_retry(self, apdu):
         result = self._real_send(apdu)
         
-        if self.check_sw(result.sw, self.PURPOSE_GET_RESPONSE):
+        while self.check_sw(result.sw, self.PURPOSE_GET_RESPONSE):
             ## Need to call GetResponse
             gr_apdu = self.COMMAND_GET_RESPONSE
-            result = self._real_send(gr_apdu)
+            tmp = self._real_send(gr_apdu)
+            
+            if not callable(result.append):
+                result = tmp
+                break
+            else:
+                result = result.append(tmp)
         
         return result
     

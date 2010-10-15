@@ -129,21 +129,17 @@ def _make_byte_property(prop):
             lambda self: delattr(self, "_"+prop),
             "The %s attribute of the APDU" % prop)
 
-class APDU(object):
-    "Base class for an APDU"
-    
+class Transmission_Frame(object):
     def __init__(self, *args, **kwargs):
-        """Creates a new APDU instance. Can be given positional parameters which 
+        """Creates a new frame instance. Can be given positional parameters which 
         must be sequences of either strings (or strings themselves) or integers
         specifying byte values that will be concatenated in order. Alternatively
-        you may give exactly one positional argument that is an APDU instance.
+        you may give exactly one positional argument that is an frame instance.
         After all the positional arguments have been concatenated they must
-        form a valid APDU!
+        form a valid frame!
         
         The keyword arguments can then be used to override those values.
-        Keywords recognized are: 
-            C_APDU: cla, ins, p1, p2, lc, le, data
-            R_APDU: sw, sw1, sw2, data
+        Keywords recognized are class-specific, but always include data
         """
         
         initbuff = list()
@@ -168,7 +164,7 @@ class APDU(object):
                 if t == str:
                     initbuff[index] = ord(value)
                 elif t != int:
-                    raise TypeError, "APDU must consist of ints or one-byte strings, not %s (index %s)" % (t, index)
+                    raise TypeError, "Frame must consist of ints or one-byte strings, not %s (index %s)" % (t, index)
             
             self.parse( initbuff )
         
@@ -190,7 +186,7 @@ class APDU(object):
         del self._data; self.data = ""
     
     data = property(_getdata, _setdata, None,
-        "The data contents of this APDU")
+        "The data contents of this frame")
     
     def _setbyte(self, name, value):
         #print "setbyte(%r, %r)" % (name, value)
@@ -229,8 +225,24 @@ class APDU(object):
         
         return "%s(%s)" % (self.__class__.__name__, ", ".join(parts))
 
-class C_APDU(APDU):
-    "Class for a command APDU"
+class Command_Frame(Transmission_Frame):
+    pass
+
+class Response_Frame(Transmission_Frame):
+    pass
+
+Transmission_Frame.COMMAND_CLASS = Command_Frame
+Transmission_Frame.RESPONSE_CLASS = Response_Frame
+
+class APDU(Transmission_Frame):
+    "Base class for an APDU"
+
+class C_APDU(Command_Frame,APDU):
+    """Class for a command APDU
+    
+    Recognized keywords for __init__ are:
+        cla, ins, p1, p2, lc, le, data
+    """
     
     def parse(self, apdu):
         "Parse a full command APDU and assign the values to our object, overwriting whatever there was."
@@ -424,9 +436,12 @@ class C_APDU(APDU):
         apdu = C_APDU(apdu_head + apdu_tail, marks = marks)
         return apdu
 
-
-class R_APDU(APDU):
-    "Class for a response APDU"
+class R_APDU(Response_Frame,APDU):
+    """Class for a response APDU
+    
+    Recognized keywords for __init__ are:
+        sw, sw1, sw2, data
+    """
     
     def _getsw(self):        return chr(self.SW1) + chr(self.SW2)
     def _setsw(self, value):
@@ -458,6 +473,9 @@ class R_APDU(APDU):
         "Return this APDU as a binary string"
         return self.data + self.sw
 
+APDU.COMMAND_CLASS = C_APDU
+APDU.RESPONSE_CLASS = R_APDU
+
 class Raw_APDU(APDU):
     """Raw APDU that doesn't do any parsing"""
     
@@ -472,7 +490,7 @@ class Raw_APDU(APDU):
     def _format_fields(self):
         return ""
 
-class PN532_Frame(APDU):
+class PN532_Frame(Transmission_Frame):
     """This is not really an ISO 7816 APDU, but close enough to use the same
     class infrastructure."""
     
@@ -540,11 +558,14 @@ class PN532_Frame(APDU):
     def render(self):
         return chr(self.cmd) + chr(self.dir) + self.data
     
-class PN532_Command(PN532_Frame):
+class PN532_Command(Command_Frame, PN532_Frame):
     MATCH_BY_dir = _DEFAULT_DIR = 0xd4
 
-class PN532_Response(PN532_Frame):
+class PN532_Response(Response_Frame, PN532_Frame):
     MATCH_BY_dir = _DEFAULT_DIR = 0xd5
+
+PN532_Frame.COMMAND_CLASS = PN532_Command
+PN532_Frame.RESPONSE_CLASS = PN532_Response
 
 class PN532_Target(object):
     TYPE_ISO14443A = "ISO 14443-A"

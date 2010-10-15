@@ -4,7 +4,8 @@ from iso_7816_4_card import *
 class Postcard_Card(ISO_7816_4_Card):
     DRIVER_NAME = ["Postcard"]
     CLA = 0xbc
-    APDU_GET_RESPONSE = C_APDU(cla=CLA,ins=0xc0)
+    COMMAND_GET_RESPONSE = C_APDU(cla=CLA,ins=0xc0)
+    
     APDU_SELECT_FILE = C_APDU(cla=CLA,ins=0xa4)
     APDU_READ_BINARY = C_APDU(cla=CLA,ins=0xb0,le=0x80)
 

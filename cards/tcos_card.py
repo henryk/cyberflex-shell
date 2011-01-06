@@ -497,13 +497,15 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         (0x9C, 0x90, None, " - RSA, Private Key"),
         (0x63, 0x00, "RFU", None),
     )
-    def decode_file_descriptor_extension(value):
+    
+    @classmethod
+    def decode_file_descriptor_extension(cls, value):
         result = [" "+utils.hexdump(value, short=True)]
         if len(value) >= 1:
             result.append("File status: %s" % utils.hexdump(value[0], short=True))
             result.append("\t" + "\n\t".join(
                 utils.parse_binary( 
-                    ord(value[0]), TCOS_Card.file_status_descriptions, True 
+                    ord(value[0]), cls.file_status_descriptions, True 
                 ) )
             )
         
@@ -523,7 +525,7 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
                 result.append("\tFile Type: %s" % utils.hexdump(iftd[0], short=True))
                 result.append("\t\t" + "\n\t\t".join(
                     utils.parse_binary( 
-                        ord(iftd[0]), TCOS_Card.iftd_byte_1_descriptions, True 
+                        ord(iftd[0]), cls.iftd_byte_1_descriptions, True 
                     ) )
                 )
             
@@ -534,7 +536,7 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
                 result.append("\tCryptographic algorithm: %s" % utils.hexdump(iftd[2], short=True))
                 result.append("\t\t" + "\n\t\t".join(
                     utils.parse_binary( 
-                        ord(iftd[2]), TCOS_Card.iftd_byte_3_descriptions, True 
+                        ord(iftd[2]), cls.iftd_byte_3_descriptions, True 
                     ) )
                 )
             
@@ -676,10 +678,12 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
     def after_send(self, result):
         return self.se.after_send(result)
     
+    def decode_file_descriptor_extension_HACK(*args, **kwargs): return TCOS_Card.decode_file_descriptor_extension(*args,  **kwargs)
+    
     TLV_OBJECTS = {
         TLV_utils.context_FCP: {
             0x86: (decode_security_attributes, "Security attributes"),
-            0x85: (decode_file_descriptor_extension, "File descriptor extension"),
+            0x85: (decode_file_descriptor_extension_HACK, "File descriptor extension"),
         },
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]
@@ -702,3 +706,34 @@ class TCOS_3_Card(TCOS_Card):
     ATRS = [
             ("3bbf.6008131fe5d0064........31c073f701d0009000..", None),
         ]
+
+    file_status_descriptions = (
+        (0xe0, 0x00, "RFU",  "Data file"),
+        (0x1f, 0x00, None, "General data file"), 
+        (0x1f, 0x01, None, "EF_ATR"), 
+        (0x1f, 0x02, None, "EF_GDO"), 
+        (0x1f, 0x03, None, "EF_TranslateDO"), 
+        (0x1f, 0x04, None, "EF_Key"), 
+        (0x1f, 0x05, None, "EF_KeyD"), 
+        (0x1f, 0x06, None, "EF_PWD"), 
+        (0x1f, 0x07, None, "EF_PWDD"), 
+        (0x1f, 0x08, None, "EF_CERTD"), 
+        (0x1f, 0x09, None, "EF_DO"), 
+        (0x1f, 0x0a, None, "EF_FCI"), 
+        (0x1f, 0x0b, None, "EF_Rule"), 
+        (0x1f, 0x0c, None, "EF_SE"), 
+        (0x1f, 0x0d, None, "RFU"), 
+        (0x1f, 0x0e, None, "RFU"), 
+        (0x1f, 0x0f, None, "RFU"), 
+        (0x10, 0x10, None, "RFU"), 
+    )
+
+    def decode_file_descriptor_extension_HACK(*args, **kwargs): return TCOS_3_Card.decode_file_descriptor_extension(*args,  **kwargs)
+    
+    TLV_OBJECTS = {
+        TLV_utils.context_FCP: {
+            0x86: (TCOS_Card.decode_security_attributes, "Security attributes"),
+            0x85: (decode_file_descriptor_extension_HACK, "File descriptor extension"),
+        },
+    }
+    TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]

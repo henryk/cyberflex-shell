@@ -700,5 +700,5 @@ class TCOS_3_Card(TCOS_Card):
     LS_L_SIZE_TAG = 0x80
     
     ATRS = [
-            ("3bbf96008131fe5d0064........31c073f701d00090007d", None),
+            ("3bbf.6008131fe5d0064........31c073f701d0009000..", None),
         ]

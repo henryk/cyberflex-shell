@@ -696,7 +696,20 @@ class TCOS_Card(ISO_7816_4_Card,building_blocks.Card_with_80_aa):
         "clear_se": cmd_clear_se,
         "set_key": cmd_set_key,
         }
-    
+
+TLV_utils.identifier("context_ardo")
+TLV_utils.identifier("context_art")
+
+def decode_access_rule(mask, value):
+    result = []
+    for i in range(3, -1, -1):
+        if mask & (1<<i):
+            result.append(binascii.b2a_hex(value[0]))
+            value = value[1:]
+        else:
+            result.append("__");
+    return " " + " ".join(result)
+
 class TCOS_3_Card(TCOS_Card):
     DRIVER_NAME = ["TCOS 3.0"]
     APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
@@ -734,6 +747,36 @@ class TCOS_3_Card(TCOS_Card):
         TLV_utils.context_FCP: {
             0x86: (TCOS_Card.decode_security_attributes, "Security attributes"),
             0x85: (decode_file_descriptor_extension_HACK, "File descriptor extension"),
+            0xAB: (TLV_utils.recurse,  "Access rule object", context_ardo), 
+            0xA2: (TLV_utils.recurse,  "SFI / Path mapping template", None), 
+            0xA0: (TLV_utils.recurse,  "Access rule template for data objects", context_art), 
+            0xA1: (TLV_utils.recurse,  "Interface mode template", None), 
         },
+        context_ardo: {
+            0x80: (TLV_utils.binary, "Compact bitmap"), 
+            
+            0x81: (lambda a: decode_access_rule(1, a), "APDU equals"), 
+            0x82: (lambda a: decode_access_rule(2, a), "APDU equals"), 
+            0x83: (lambda a: decode_access_rule(3, a), "APDU equals"), 
+            0x84: (lambda a: decode_access_rule(4, a), "APDU equals"), 
+            0x85: (lambda a: decode_access_rule(5, a), "APDU equals"), 
+            0x86: (lambda a: decode_access_rule(6, a), "APDU equals"), 
+            0x87: (lambda a: decode_access_rule(7, a), "APDU equals"), 
+            0x88: (lambda a: decode_access_rule(8, a), "APDU equals"), 
+            0x89: (lambda a: decode_access_rule(9, a), "APDU equals"), 
+            0x8a: (lambda a: decode_access_rule(0xa, a), "APDU equals"), 
+            0x8b: (lambda a: decode_access_rule(0xb, a), "APDU equals"), 
+            0x8c: (lambda a: decode_access_rule(0xc, a), "APDU equals"), 
+            0x8d: (lambda a: decode_access_rule(0xd, a), "APDU equals"), 
+            0x8e: (lambda a: decode_access_rule(0xe, a), "APDU equals"), 
+            0x8f: (lambda a: decode_access_rule(0xf, a), "APDU equals"), 
+            
+            0x90: (None, "Always allowed"), 
+            0x97: (None, "Never allowed"), 
+        }, 
+        context_art: {
+            0xAB: (TLV_utils.recurse, "Access rule object", context_ardo), 
+            0x5C: (TLV_utils.binary, "Tag list"), 
+        }
     }
     TLV_OBJECTS[TLV_utils.context_FCI] = TLV_OBJECTS[TLV_utils.context_FCP]

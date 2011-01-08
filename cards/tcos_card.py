@@ -710,6 +710,23 @@ def decode_access_rule(mask, value):
             result.append("__");
     return " " + " ".join(result)
 
+compact_access_descriptions = (
+    (0xc0, 0xc0, None, "proprietary"), 
+    (0xa0, 0xa0, None, "proprietary"), 
+    (0x90, 0x90, None, "proprietary"), 
+    (0x88, 0x88, None, "proprietary"), 
+    (0xc0, 0x40, None, "DF: DELETE FILE(self);    EF: DELETE FILE;                DO: RFU"), 
+    (0xa0, 0x20, None, "DF: TERMINATE MF / DF;    EF: TERMINATE EF;               DO: RFU"), 
+    (0x90, 0x10, None, "DF: ACTIVATE FILE;        EF: ACTIVATE FILE;              DO: RFU"), 
+    (0x88, 0x08, None, "DF: DEACTIVATE FILE;      EF: DEACTIVATE FILE;            DO: RFU"), 
+    (0x04, 0x04, None, "DF: CREATE FILE (DF);     EF: APPEND RECORD;              DO: MANAGE SECURITY ENVIRONMENT"), 
+    (0x02, 0x02, None, "DF: CREATE FILE (EF);     EF: UPDATE BINARY/RECORD;       DO: PUT DATA"), 
+    (0x01, 0x01, None, "DF: DELETE FILE (child);  EF: READ/SEARCH BINARY/RECORD;  DO: GET DATA"), 
+)
+
+def decode_compact_access_bitmap(value):
+    return (" %s \n" % utils.hexdump(value, short=True)) + "\n\t".join(utils.parse_binary(ord(value[0]), compact_access_descriptions, True))
+
 class TCOS_3_Card(TCOS_Card):
     DRIVER_NAME = ["TCOS 3.0"]
     APDU_DELETE_FILE = C_APDU(cla=0x80,ins=0xe4)
@@ -753,7 +770,7 @@ class TCOS_3_Card(TCOS_Card):
             0xA1: (TLV_utils.recurse,  "Interface mode template", None), 
         },
         context_ardo: {
-            0x80: (TLV_utils.binary, "Compact bitmap"), 
+            0x80: (decode_compact_access_bitmap, "Compact bitmap"), 
             
             0x81: (lambda a: decode_access_rule(1, a), "APDU equals"), 
             0x82: (lambda a: decode_access_rule(2, a), "APDU equals"), 

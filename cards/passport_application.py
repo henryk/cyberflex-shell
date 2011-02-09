@@ -83,7 +83,7 @@ class Passport_Application(Application):
     APDU_SELECT_FILE = C_APDU(INS=0xa4)
     DEFAULT_CONTEXT = context_mrtd
     
-    SELECT_FILE_LE = 0x00
+    SELECT_FILE_LE = None
     
     AID_LIST = [
         "a0000002471001"

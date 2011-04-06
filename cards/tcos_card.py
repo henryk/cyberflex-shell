@@ -725,7 +725,7 @@ compact_access_descriptions = (
 )
 
 def decode_compact_access_bitmap(value):
-    return (" %s \n" % utils.hexdump(value, short=True)) + "\n\t".join(utils.parse_binary(ord(value[0]), compact_access_descriptions, True))
+    return (" %s \n" % utils.hexdump(value, short=True)) + "\n".join(utils.parse_binary(ord(value[0]), compact_access_descriptions, True))
 
 class TCOS_3_Card(TCOS_Card):
     DRIVER_NAME = ["TCOS 3.0"]

@@ -122,7 +122,7 @@ if __name__ == "__main__":
                 if dump_contents:
                     contents, sw = card.read_binary_file()
                     contents_result = [sw]
-                    if sw == '\x69\x81': # Command incompatible with file structure, retry read_record
+                    if sw == '\x69\x81' or sw == '\x69\xf0': # Command incompatible with file structure, retry read_record
                         # FIXME this logic for reading records is not correct
                         print >>sys.stderr, "\rFile %04X -> %02X%02X %s  Reading records...  " % (fid, result.sw1, result.sw2, status),
                         records = {}

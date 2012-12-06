@@ -47,7 +47,7 @@ class Passport_Security_Environment(TCOS_Security_Environment):
             
             if apdu.case() in (2,4):
                 if apdu.Le == 0:
-                    apdu.Le = 0xe7 # FIXME: Probably not the right way
+                    apdu.Le = 0xdf # FIXME: Probably not the right way
                 new_apdu.append("97(%02x)" % apdu.Le)
             
             new_apdu.append("8E()00")

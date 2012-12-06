@@ -128,7 +128,7 @@ class ACR122_Reader(Smartcard_Reader):
         pcsc_readers = PCSC_Reader.list_readers()
         readers = []
         for name, obj in pcsc_readers:
-            if name.startswith("ACS ACR 38U-CCID"):
+            if name.startswith("ACS ACR 38U-CCID") or name.startswith("ACS ACR122U PICC Interface"):
                 reader = cls(obj)
                 readers.append( (reader.name, reader) )
         return readers

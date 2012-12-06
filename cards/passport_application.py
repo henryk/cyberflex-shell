@@ -156,7 +156,7 @@ class Passport_Application(Application):
             print "Kifd    = %s" % hexdump(Kifd, indent=10)
         
         S = rnd_ifd + rnd_icc + Kifd
-        Eifd = crypto_utils.cipher(True, "des3-cbc", Kenc, S)
+        Eifd = crypto_utils.cipher(True, "des3-cbc", Kenc, S, "\x00"*8)
         Mifd = self._mac(Kmac, Eifd)
         if verbose:
             print "Eifd    = %s" % hexdump(Eifd, indent=10)
@@ -179,7 +179,7 @@ class Passport_Application(Application):
             print "Micc    = %s" % hexdump(Micc)
             print "Micc verified OK"
         
-        R = crypto_utils.cipher(False, "des3-cbc", Kenc, Eicc)
+        R = crypto_utils.cipher(False, "des3-cbc", Kenc, Eicc, "\x00"*8)
         if verbose:
             print "R       = %s" % hexdump(R, indent=10)
         if not R[:8] == rnd_icc:
@@ -338,7 +338,7 @@ class Passport_Application(Application):
         if dopad:
             topad = 8 - len(data) % 8
             data = data + "\x80" + ("\x00" * (topad-1))
-        a = crypto_utils.cipher(True, "des-cbc", key[:8], data)
+        a = crypto_utils.cipher(True, "des-cbc", key[:8], data, "\x00"*8)
         b = crypto_utils.cipher(False, "des-ecb", key[8:16], a[-8:])
         c = crypto_utils.cipher(True, "des-ecb", key[:8], b)
         return c

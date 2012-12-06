@@ -73,7 +73,7 @@ class FileLikeTextBuffer(object):
         
         return stream_to_buf(self, stream)
 
-class ireadyou(object,CardObserver,ReaderObserver):
+class ireadyou(CardObserver,ReaderObserver):
     GLADE_FILE = "gui/ireadyou/ireadyou.glade"
     
     def __init__(self, ticket = None):

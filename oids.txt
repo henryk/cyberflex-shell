@@ -164,4 +164,12 @@
 1.2.840.10045.2 id-publicKeyType
 1.2.840.10045.2.1 id-ecPublicKey Elliptic curve public key in X9.62 format
 
+# From http://support.microsoft.com/kb/287547
+1.3.6.1.4.1.311.2.1.4 SPC_INDIRECT_DATA_OBJID
+1.3.6.1.4.1.311.2.1.11 SPC_STATEMENT_TYPE_OBJID
+1.3.6.1.4.1.311.2.1.12 SPC_SP_OPUS_INFO_OBJID
+1.3.6.1.4.1.311.2.1.15 SPC_PE_IMAGE_DATA_OBJID
+1.3.6.1.4.1.311.2.1.21 SPC_INDIVIDUAL_SP_KEY_PURPOSE_OBJID
 
+# http://www.oid-info.com/get/1.3.14.3.2.29
+1.3.14.3.2.29 sha-1WithRSAEncryption

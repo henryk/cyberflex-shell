@@ -150,7 +150,7 @@ class Cardmultiplexer:
         """Update the local copy of merged attributes."""
         
         ordered_classes = list(self._classes)
-        ordered_classes.sort(cmp=lambda a,b: (a!=b and ( issubclass(a,b) and -1 or 1 ) or 0))
+        ordered_classes.sort(cmp=lambda a,b: (a!=b and ( issubclass(a,b) and 1 or -1 ) or 0))
         
         for attr in self.MERGE_DICTS + self.MERGE_DICTS_RECURSIVE:
             tmpdict = {}
